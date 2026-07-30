@@ -88,18 +88,6 @@ export function getChallengeLabel(
   return `${distance} km`;
 }
 
-export function rollDice(): DiceValue {
-  return (Math.floor(Math.random() * 6) + 1) as DiceValue;
-}
-
-export function resolveRolledDistance(value: DiceValue, type: ChallengeType): number {
-  const distance = getDistance(value, type);
-  if (Array.isArray(distance)) {
-    return Math.random() < 0.5 ? distance[0] : distance[1];
-  }
-  return distance;
-}
-
 export function isInMonth(date: Date, year: number, monthIndex: number): boolean {
   return date.getFullYear() === year && date.getMonth() === monthIndex;
 }

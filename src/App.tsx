@@ -1,9 +1,11 @@
 import { Dices, Moon, Route, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ChallengeCalendar } from "./components/ChallengeCalendar";
+import { ChallengeStrip } from "./components/ChallengeStrip";
 import { Dashboard } from "./components/Dashboard";
 import { DiceRoller } from "./components/DiceRoller";
 import { HistoryAndStats } from "./components/HistoryAndStats";
+import { Reveal } from "./components/Reveal";
 import { ShareBrief } from "./components/ShareBrief";
 import { Button, Card } from "./components/ui/primitives";
 import { useChallenge } from "./hooks/useChallenge";
@@ -35,14 +37,14 @@ function RuleGrid() {
         <h2 id="rules-title" className="section-title">August 2026 rules</h2>
       </div>
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="p-5">
+        <Card className="lift-card p-5">
           <p className="eyebrow">Monday</p>
           <h3 className="mt-3 font-display text-2xl font-black">Always rest</h3>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             No roll is needed. Recover, reset, and get ready for the week.
           </p>
         </Card>
-        <Card className="p-5 lg:col-span-2">
+        <Card className="lift-card p-5 lg:col-span-2">
           <p className="eyebrow">Tuesday to Friday</p>
           <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
             {(Object.entries(WEEKDAY_DISTANCES) as [string, number | [number, number]][]).map(
@@ -63,7 +65,7 @@ function RuleGrid() {
             )}
           </div>
         </Card>
-        <Card className="p-5 lg:col-span-2">
+        <Card className="lift-card p-5 lg:col-span-2">
           <p className="eyebrow">Friday roll for the weekend</p>
           <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
             {(Object.entries(WEEKEND_DISTANCES) as [string, number][]).map(([face, distance]) => (
@@ -76,7 +78,7 @@ function RuleGrid() {
             ))}
           </div>
         </Card>
-        <Card className="p-5">
+        <Card className="lift-card p-5">
           <p className="eyebrow">Weekend</p>
           <h3 className="mt-3 font-display text-2xl font-black">One run, two days</h3>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -169,50 +171,76 @@ export default function App() {
         </div>
       </header>
 
-      <main id="top" className="mx-auto max-w-7xl space-y-16 px-4 py-8 sm:px-6 sm:py-12">
-        <section className="relative min-h-[34rem] overflow-hidden rounded-[2rem] bg-primary px-6 py-14 text-white sm:px-10 sm:py-20 lg:flex lg:items-center">
-          <div className="absolute -left-28 -top-44 size-[34rem] rounded-full border border-white/15" />
-          <div className="absolute bottom-0 right-0 hidden h-full w-2/5 opacity-60 lg:block runner-lines" />
-          <div className="brand-orbit absolute -right-28 top-1/2 hidden size-[28rem] -translate-y-1/2 lg:block" />
-          <div className="relative max-w-3xl">
-            <p className="eyebrow text-signal">Kurtosys · {CHALLENGE_LABEL}</p>
-            <h1 className="mt-5 max-w-3xl font-display text-5xl font-bold leading-[.98] tracking-[-.055em] sm:text-7xl">
-              Your next run is <span className="text-signal">up to chance.</span>
-            </h1>
-            <p className="mt-6 max-w-xl text-base leading-7 text-white/80 sm:text-lg">
-              A one-month office challenge for August 2026. Roll the real dice each afternoon, record the result, and plan tomorrow’s run.
-            </p>
-            <a
-              href={canRollToday ? "#roller" : "#calendar"}
-              className="mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-signal px-6 text-sm font-bold text-ink transition hover:-translate-y-0.5 hover:bg-white"
-            >
-              <Route className="size-4" />
-              {canRollToday ? "Record today’s office roll" : "Set up August 2026"}
-            </a>
+      <main id="top" className="mx-auto max-w-7xl space-y-20 px-4 py-8 sm:px-6 sm:py-12">
+        <div>
+          <section className="hero-panel relative min-h-[34rem] overflow-hidden rounded-[2rem] bg-primary px-6 py-14 text-white sm:px-10 sm:py-20 lg:flex lg:items-center">
+            <div className="hero-ring absolute -left-28 -top-44 size-[34rem] rounded-full border border-white/15" />
+            <div className="absolute bottom-0 right-0 hidden h-full w-2/5 opacity-60 lg:block runner-lines" />
+            <div className="brand-orbit absolute -right-28 top-1/2 hidden size-[28rem] -translate-y-1/2 lg:block" />
+            <div className="relative max-w-3xl">
+              <div className="hero-enter hero-enter--1 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white/85 backdrop-blur">
+                <span className="size-2 rounded-full bg-signal shadow-[0_0_14px_var(--signal)]" />
+                Starts 1 August 2026
+              </div>
+              <p className="hero-enter hero-enter--2 eyebrow mt-6 text-signal">
+                Kurtosys · {CHALLENGE_LABEL}
+              </p>
+              <h1 className="hero-enter hero-enter--3 mt-5 max-w-3xl font-display text-5xl font-bold leading-[.98] tracking-[-.055em] sm:text-7xl">
+                Your next run is <span className="text-signal">up to chance.</span>
+              </h1>
+              <p className="hero-enter hero-enter--4 mt-6 max-w-xl text-base leading-7 text-white/80 sm:text-lg">
+                A one-month office challenge for August 2026. Roll the real dice each
+                afternoon, record the result, and plan tomorrow’s run.
+              </p>
+              <a
+                href={canRollToday ? "#roller" : "#calendar"}
+                className="hero-enter hero-enter--5 group mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-signal px-6 text-sm font-bold text-ink transition hover:-translate-y-0.5 hover:bg-white"
+              >
+                <Route className="size-4 transition-transform group-hover:translate-x-1" />
+                {canRollToday ? "Record today’s office roll" : "Set up August 2026"}
+              </a>
+            </div>
+          </section>
+          <div className="relative z-10 px-3 sm:px-8">
+            <ChallengeStrip />
           </div>
-        </section>
+        </div>
 
-        <div id="dashboard"><Dashboard {...challenge} /></div>
-        <ShareBrief rolls={challenge.rolls} logoUrl={kurtosysLogo} />
-        <div id="roller">
-          <DiceRoller
-            hasRolled={challenge.hasRolledFor(today)}
-            existingRoll={existingRoll}
-            onSave={(value, distance) => challenge.rollForDate(today, value, distance)}
-          />
-        </div>
-        <div id="calendar">
-          <ChallengeCalendar
-            month={month}
-            rolls={challenge.rolls}
-            augustGeneratedYear={challenge.meta.augustGeneratedYear}
-            onGenerateAugust={handleGenerateAugust}
-          />
-        </div>
-        <RuleGrid />
-        <div id="history">
-          <HistoryAndStats rolls={augustRolls} stats={challenge.stats} onClear={clearHistory} />
-        </div>
+        <Reveal>
+          <div id="dashboard"><Dashboard {...challenge} /></div>
+        </Reveal>
+        <Reveal delay={60}>
+          <ShareBrief rolls={challenge.rolls} logoUrl={kurtosysLogo} />
+        </Reveal>
+        <Reveal delay={80}>
+          <div id="roller">
+            <DiceRoller
+              hasRolled={challenge.hasRolledFor(today)}
+              existingRoll={existingRoll}
+              onSave={(value, distance) => challenge.rollForDate(today, value, distance)}
+            />
+          </div>
+        </Reveal>
+        <Reveal>
+          <div id="calendar">
+            <ChallengeCalendar
+              month={month}
+              rolls={challenge.rolls}
+              augustGeneratedYear={challenge.meta.augustGeneratedYear}
+              onGenerateAugust={handleGenerateAugust}
+            />
+          </div>
+        </Reveal>
+        <Reveal><RuleGrid /></Reveal>
+        <Reveal>
+          <div id="history">
+            <HistoryAndStats
+              rolls={augustRolls}
+              stats={challenge.stats}
+              onClear={clearHistory}
+            />
+          </div>
+        </Reveal>
       </main>
 
       <footer className="mt-16 bg-ink text-white">

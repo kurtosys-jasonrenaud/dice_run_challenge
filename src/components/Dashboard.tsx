@@ -22,7 +22,13 @@ function ChallengeCard({
   accent?: boolean;
 }) {
   return (
-    <Card className={`min-h-52 p-5 ${accent ? "border-primary/30 bg-primary text-white" : ""}`}>
+    <Card
+      className={`lift-card min-h-52 overflow-hidden p-5 ${
+        accent
+          ? "relative border-primary/30 bg-primary text-white before:absolute before:-right-10 before:-top-16 before:size-36 before:rounded-full before:border before:border-white/15"
+          : ""
+      }`}
+    >
       <div className="flex items-center justify-between">
         <p className={`eyebrow ${accent ? "text-signal" : ""}`}>{eyebrow}</p>
         {roll && (
@@ -106,7 +112,7 @@ export function Dashboard({
         />
         <ChallengeCard eyebrow="Next challenge" roll={next} fallback="Not rolled yet" />
         <ChallengeCard eyebrow="Weekend challenge" roll={weekend} fallback="Rolls on Friday" />
-        <Card className="p-5">
+        <Card className="lift-card p-5">
           <div className="flex items-center justify-between">
             <p className="eyebrow">Monthly stats</p>
             <TrendingUp className="size-5 text-primary" />

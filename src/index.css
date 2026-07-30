@@ -67,8 +67,17 @@
   border-color: var(--border);
 }
 
+::selection {
+  color: var(--ink);
+  background: var(--signal);
+}
+
 html {
   scroll-behavior: smooth;
+}
+
+[id] {
+  scroll-margin-top: 6rem;
 }
 
 body {
@@ -86,6 +95,39 @@ body {
 button,
 a {
   -webkit-tap-highlight-color: transparent;
+}
+
+.hero-panel {
+  box-shadow: 0 34px 80px -42px rgb(3 66 228 / 0.85);
+}
+
+.hero-enter {
+  opacity: 0;
+  animation: hero-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.hero-enter--1 {
+  animation-delay: 80ms;
+}
+
+.hero-enter--2 {
+  animation-delay: 160ms;
+}
+
+.hero-enter--3 {
+  animation-delay: 240ms;
+}
+
+.hero-enter--4 {
+  animation-delay: 340ms;
+}
+
+.hero-enter--5 {
+  animation-delay: 430ms;
+}
+
+.hero-ring {
+  animation: ring-breathe 8s ease-in-out infinite;
 }
 
 .eyebrow {
@@ -120,6 +162,7 @@ a {
   box-shadow:
     0 28px 55px -20px rgb(0 0 0 / 0.7),
     inset 0 1px 0 rgb(255 255 255);
+  animation: dice-float 5s ease-in-out infinite;
 }
 
 .dice-pip {
@@ -132,23 +175,6 @@ a {
   transition: opacity 80ms ease;
 }
 
-.animate-dice-roll {
-  animation: dice-roll 600ms cubic-bezier(0.22, 1, 0.36, 1) infinite;
-}
-
-@keyframes dice-roll {
-  0%,
-  100% {
-    transform: rotate(0deg) scale(1);
-  }
-  25% {
-    transform: rotate(-8deg) scale(0.96);
-  }
-  60% {
-    transform: rotate(7deg) scale(1.05);
-  }
-}
-
 .runner-lines {
   background:
     radial-gradient(circle at 65% 35%, var(--signal) 0 5px, transparent 6px),
@@ -156,11 +182,13 @@ a {
     linear-gradient(125deg, transparent 15%, rgb(255 255 255 / 0.13) 15.5% 16%, transparent 16.5% 35%, rgb(255 255 255 / 0.13) 35.5% 36%, transparent 36.5%);
   background-size: 90px 90px, 120px 120px, 100% 100%;
   transform: rotate(-6deg) scale(1.18);
+  animation: pattern-drift 14s linear infinite;
 }
 
 .brand-orbit {
   border: 1px solid rgb(255 255 255 / 0.26);
   border-radius: 999px;
+  animation: orbit-spin 24s linear infinite;
 }
 
 .brand-orbit::before,
@@ -182,6 +210,124 @@ a {
   left: 35%;
   background: var(--signal);
   box-shadow: 0 0 32px rgb(49 255 156 / 0.8);
+  animation: signal-pulse 2.4s ease-in-out infinite;
+}
+
+.challenge-strip {
+  box-shadow: 0 24px 55px -32px rgb(7 25 53 / 0.9);
+}
+
+.challenge-strip__runner {
+  position: absolute;
+  top: 0;
+  left: -20%;
+  width: 20%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--signal), transparent);
+  animation: strip-run 4.5s ease-in-out infinite;
+}
+
+.reveal-section {
+  opacity: 0;
+  transform: translateY(1.5rem);
+  transition:
+    opacity 700ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal-section.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.lift-card {
+  transition:
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 300ms ease,
+    border-color 300ms ease;
+}
+
+@media (hover: hover) {
+  .lift-card:hover {
+    transform: translateY(-0.35rem);
+    border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+    box-shadow: 0 24px 52px -32px rgb(3 66 228 / 0.55);
+  }
+}
+
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ring-breathe {
+  0%,
+  100% {
+    scale: 1;
+    opacity: 0.8;
+  }
+  50% {
+    scale: 1.08;
+    opacity: 0.45;
+  }
+}
+
+@keyframes dice-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-0.6rem) rotate(1deg);
+  }
+}
+
+@keyframes pattern-drift {
+  from {
+    background-position: 0 0, 0 0, 0 0;
+  }
+  to {
+    background-position: 90px 90px, -120px 120px, 0 0;
+  }
+}
+
+@keyframes orbit-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes signal-pulse {
+  0%,
+  100% {
+    scale: 0.8;
+    opacity: 0.65;
+  }
+  50% {
+    scale: 1.2;
+    opacity: 1;
+  }
+}
+
+@keyframes strip-run {
+  0% {
+    left: -20%;
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -195,5 +341,11 @@ a {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .hero-enter,
+  .reveal-section {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }

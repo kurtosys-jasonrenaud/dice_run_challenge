@@ -63,10 +63,10 @@ export function ShareBrief({ rolls, logoUrl }: ShareBriefProps) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <Card className="overflow-hidden border-primary/20 bg-ink p-0 text-white">
+        <Card className="lift-card overflow-hidden border-primary/20 bg-ink p-0 text-white">
           <div className="relative overflow-hidden bg-primary px-6 py-8 sm:px-8 sm:py-10">
             <div className="absolute -right-16 -top-20 size-56 rounded-full border border-white/20" />
-            <div className="absolute right-10 top-10 size-3 rounded-full bg-signal" />
+            <div className="absolute right-10 top-10 size-3 animate-pulse rounded-full bg-signal shadow-[0_0_20px_var(--signal)]" />
             <p className="eyebrow text-signal">Kurtosys · August 2026</p>
             <p className="mt-4 text-sm font-semibold text-white/70">
               {brief.isWeekend ? "Weekend brief" : "Today’s challenge"}
@@ -88,7 +88,7 @@ export function ShareBrief({ rolls, logoUrl }: ShareBriefProps) {
           </div>
         </Card>
 
-        <Card className="flex flex-col p-5 sm:p-6">
+        <Card className="lift-card flex flex-col p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <Share2 className="size-5 text-primary" />
             <h3 className="font-display text-xl font-bold">Copy and send</h3>
