@@ -4,6 +4,7 @@ import { ChallengeCalendar } from "./components/ChallengeCalendar";
 import { Dashboard } from "./components/Dashboard";
 import { DiceRoller } from "./components/DiceRoller";
 import { HistoryAndStats } from "./components/HistoryAndStats";
+import { ShareBrief } from "./components/ShareBrief";
 import { Button, Card } from "./components/ui/primitives";
 import { useChallenge } from "./hooks/useChallenge";
 import kurtosysLogo from "../logo-w.svg?url";
@@ -152,6 +153,7 @@ export default function App() {
           </a>
           <nav className="hidden items-center gap-7 text-sm font-semibold text-white/70 md:flex">
             <a className="transition hover:text-signal" href="#dashboard">Dashboard</a>
+            <a className="transition hover:text-signal" href="#share">Share</a>
             <a className="transition hover:text-signal" href="#calendar">Calendar</a>
             <a className="transition hover:text-signal" href="#history">History</a>
           </nav>
@@ -191,6 +193,7 @@ export default function App() {
         </section>
 
         <div id="dashboard"><Dashboard {...challenge} /></div>
+        <ShareBrief rolls={challenge.rolls} logoUrl={kurtosysLogo} />
         <div id="roller">
           <DiceRoller
             hasRolled={challenge.hasRolledFor(today)}
