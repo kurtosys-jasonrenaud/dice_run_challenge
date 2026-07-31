@@ -4,7 +4,10 @@ dist/
 *.local
 *.tsbuildinfo
 .env
+.env.*
+!.env.example
 uploads/**/*.png
 uploads/**/*.jpg
 uploads/**/*.jpeg
 uploads/**/*.webp
+server/data/*.json

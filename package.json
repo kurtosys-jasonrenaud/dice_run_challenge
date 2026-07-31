@@ -5,14 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:api": "tsx server/index.ts",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.6",
     "@tailwindcss/vite": "4.1.14",
     "class-variance-authority": "latest",
     "clsx": "latest",
+    "hono": "^4.10.4",
     "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
@@ -21,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/js": "latest",
+    "@types/node": "^24.10.1",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "5.1.4",
@@ -28,6 +32,7 @@
     "eslint-plugin-react-hooks": "latest",
     "eslint-plugin-react-refresh": "latest",
     "globals": "latest",
+    "tsx": "^4.20.6",
     "typescript": "latest",
     "typescript-eslint": "latest",
     "vite": "7.3.6"

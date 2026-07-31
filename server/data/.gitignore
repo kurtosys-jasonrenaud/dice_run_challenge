@@ -1,0 +1,4 @@
+# Shared Strava run store (created automatically by the API).
+# Keep this out of git so local auth sessions and uploads stay private.
+*
+!.gitignore

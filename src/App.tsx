@@ -158,6 +158,7 @@ export default function App() {
             <a className="transition hover:text-signal" href="#share">Share</a>
             <a className="transition hover:text-signal" href="#calendar">Calendar</a>
             <a className="transition hover:text-signal" href="#history">History</a>
+            <a className="transition hover:text-signal" href="#/strava-test">Strava test</a>
           </nav>
           <Button
             variant="ghost"
@@ -250,7 +251,12 @@ export default function App() {
             <span className="h-5 w-px bg-white/25" />
             <p className="font-bold text-white">Roll &amp; Run · {CHALLENGE_LABEL}</p>
           </div>
-          <p>Run, jog, or walk. Rejoin whenever you can.</p>
+          <div className="flex flex-col gap-2 sm:items-end">
+            <p>Run, jog, or walk. Rejoin whenever you can.</p>
+            <a className="font-semibold text-signal hover:underline" href="#/strava-test">
+              Open Strava test page
+            </a>
+          </div>
         </div>
       </footer>
     </div>
