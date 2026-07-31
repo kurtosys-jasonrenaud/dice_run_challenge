@@ -6,9 +6,9 @@ workers_dev = true
 [vars]
 APP_ORIGIN = "https://kurtosys-jasonrenaud.github.io/dice_run_challenge/"
 ALLOWED_ORIGINS = "https://kurtosys-jasonrenaud.github.io,http://localhost:5173"
+STRAVA_REDIRECT_URI = "https://dice-run-challenge-api.kurtosys-roll-run.workers.dev/api/auth/callback"
 
-# Replace these IDs after running: npm run cf:kv
 [[kv_namespaces]]
 binding = "STORE"
-id = "00000000000000000000000000000000"
-preview_id = "00000000000000000000000000000000"
+id = "578ae45fa3074ece829428d52b5364f0"
+preview_id = "d61a471f328043f1978396d07666660a"
