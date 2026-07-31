@@ -4,7 +4,7 @@ Kurtosys company run challenge for **August 2026**. Static React app with localS
 
 Live site: https://kurtosys-jasonrenaud.github.io/dice_run_challenge/
 
-Strava test page: https://kurtosys-jasonrenaud.github.io/dice_run_challenge/#/strava-test
+Strava section: https://kurtosys-jasonrenaud.github.io/dice_run_challenge/#strava
 
 ## Stack
 
@@ -22,13 +22,12 @@ Strava test page: https://kurtosys-jasonrenaud.github.io/dice_run_challenge/#/st
 ```text
 src/
 ├── components/
+│   └── StravaBoard.tsx      Connect Strava, upload runs, shared leaderboard
 ├── hooks/
 ├── lib/
 │   └── stravaApi.ts         Client for the Strava API (Bearer session)
-├── pages/
-│   └── StravaTestPage.tsx   Connect Strava, pick activity, shared board
 ├── App.tsx
-└── main.tsx                 Hash routing (#/strava-test)
+└── main.tsx
 
 server/
 ├── app.ts                   Shared Hono routes
@@ -57,7 +56,7 @@ npm run dev
 ```
 
 - Challenge app: http://localhost:5173/dice_run_challenge/
-- Strava test page: http://localhost:5173/dice_run_challenge/#/strava-test
+- Strava section: http://localhost:5173/dice_run_challenge/#strava
 
 Leave `VITE_API_BASE_URL` empty locally so Vite proxies `/api` to port `8787`.
 
@@ -107,7 +106,7 @@ npm run cf:deploy
 
 Then push to `main` (or re-run the Pages workflow) so the frontend talks to the hosted API.
 
-## Strava test API
+## Strava API
 
 | Endpoint | Purpose |
 |---|---|

@@ -41,7 +41,7 @@ function buildAppRedirect(appOrigin: string, params: Record<string, string>): st
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, value);
   }
-  url.hash = "/strava-test";
+  url.hash = "strava";
   return url.toString();
 }
 

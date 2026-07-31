@@ -7,6 +7,7 @@ import { DiceRoller } from "./components/DiceRoller";
 import { HistoryAndStats } from "./components/HistoryAndStats";
 import { Reveal } from "./components/Reveal";
 import { ShareBrief } from "./components/ShareBrief";
+import { StravaBoard } from "./components/StravaBoard";
 import { Button, Card } from "./components/ui/primitives";
 import { useChallenge } from "./hooks/useChallenge";
 import kurtosysLogo from "../logo-w.svg?url";
@@ -155,10 +156,10 @@ export default function App() {
           </a>
           <nav className="hidden items-center gap-7 text-sm font-semibold text-white/70 md:flex">
             <a className="transition hover:text-signal" href="#dashboard">Dashboard</a>
+            <a className="transition hover:text-signal" href="#strava">Strava</a>
             <a className="transition hover:text-signal" href="#share">Share</a>
             <a className="transition hover:text-signal" href="#calendar">Calendar</a>
             <a className="transition hover:text-signal" href="#history">History</a>
-            <a className="transition hover:text-signal" href="#/strava-test">Strava test</a>
           </nav>
           <Button
             variant="ghost"
@@ -210,6 +211,9 @@ export default function App() {
         <Reveal>
           <div id="dashboard"><Dashboard {...challenge} /></div>
         </Reveal>
+        <Reveal delay={40}>
+          <StravaBoard />
+        </Reveal>
         <Reveal delay={60}>
           <ShareBrief rolls={challenge.rolls} logoUrl={kurtosysLogo} />
         </Reveal>
@@ -251,12 +255,7 @@ export default function App() {
             <span className="h-5 w-px bg-white/25" />
             <p className="font-bold text-white">Roll &amp; Run · {CHALLENGE_LABEL}</p>
           </div>
-          <div className="flex flex-col gap-2 sm:items-end">
-            <p>Run, jog, or walk. Rejoin whenever you can.</p>
-            <a className="font-semibold text-signal hover:underline" href="#/strava-test">
-              Open Strava test page
-            </a>
-          </div>
+          <p>Run, jog, or walk. Rejoin whenever you can.</p>
         </div>
       </footer>
     </div>
