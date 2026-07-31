@@ -1,0 +1,14 @@
+name = "dice-run-challenge-api"
+main = "server/worker.ts"
+compatibility_date = "2025-07-01"
+workers_dev = true
+
+[vars]
+APP_ORIGIN = "https://kurtosys-jasonrenaud.github.io/dice_run_challenge/"
+ALLOWED_ORIGINS = "https://kurtosys-jasonrenaud.github.io,http://localhost:5173"
+
+# Replace these IDs after running: npm run cf:kv
+[[kv_namespaces]]
+binding = "STORE"
+id = "00000000000000000000000000000000"
+preview_id = "00000000000000000000000000000000"

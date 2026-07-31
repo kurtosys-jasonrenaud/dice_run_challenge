@@ -1,29 +1,28 @@
-import type { AthleteProfile, StravaActivitySummary, StravaTokens } from "./types.js";
+import type { AthleteProfile, StravaActivitySummary, StravaEnvConfig, StravaTokens } from "./types.js";
 
 const STRAVA_AUTH = "https://www.strava.com/oauth/authorize";
 const STRAVA_TOKEN = "https://www.strava.com/oauth/token";
 const STRAVA_API = "https://www.strava.com/api/v3";
 
-export function requireEnv(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
+export function getStravaConfig(env: StravaEnvConfig) {
+  const clientId = env.STRAVA_CLIENT_ID?.trim();
+  const clientSecret = env.STRAVA_CLIENT_SECRET?.trim();
+  const redirectUri = env.STRAVA_REDIRECT_URI?.trim();
+  if (!clientId || !clientSecret || !redirectUri) {
+    throw new Error("Missing Strava environment configuration");
   }
-  return value;
-}
 
-export function getStravaConfig() {
   return {
-    clientId: requireEnv("STRAVA_CLIENT_ID"),
-    clientSecret: requireEnv("STRAVA_CLIENT_SECRET"),
-    redirectUri: requireEnv("STRAVA_REDIRECT_URI"),
-    appOrigin: process.env.APP_ORIGIN?.trim() || "http://localhost:5173/dice_run_challenge/",
+    clientId,
+    clientSecret,
+    redirectUri,
+    appOrigin: env.APP_ORIGIN?.trim() || "http://localhost:5173/dice_run_challenge/",
     scopes: "read,activity:read_all",
   };
 }
 
-export function buildAuthorizeUrl(state: string): string {
-  const { clientId, redirectUri, scopes } = getStravaConfig();
+export function buildAuthorizeUrl(env: StravaEnvConfig, state: string): string {
+  const { clientId, redirectUri, scopes } = getStravaConfig(env);
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
@@ -57,11 +56,11 @@ function toTokens(payload: TokenResponse): StravaTokens {
   };
 }
 
-export async function exchangeCode(code: string): Promise<{
-  tokens: StravaTokens;
-  athlete: AthleteProfile;
-}> {
-  const { clientId, clientSecret } = getStravaConfig();
+export async function exchangeCode(
+  env: StravaEnvConfig,
+  code: string,
+): Promise<{ tokens: StravaTokens; athlete: AthleteProfile }> {
+  const { clientId, clientSecret } = getStravaConfig(env);
   const body = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
@@ -98,8 +97,11 @@ export async function exchangeCode(code: string): Promise<{
   };
 }
 
-export async function refreshTokens(refreshToken: string): Promise<StravaTokens> {
-  const { clientId, clientSecret } = getStravaConfig();
+export async function refreshTokens(
+  env: StravaEnvConfig,
+  refreshToken: string,
+): Promise<StravaTokens> {
+  const { clientId, clientSecret } = getStravaConfig(env);
   const body = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,

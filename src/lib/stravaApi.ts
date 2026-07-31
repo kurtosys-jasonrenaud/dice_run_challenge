@@ -40,14 +40,37 @@ export interface LeaderboardEntry {
   lastRunAt: string | null;
 }
 
+const SESSION_KEY = "roll-and-run:strava-session";
+
+function apiBase(): string {
+  const configured = import.meta.env.VITE_API_BASE_URL?.trim();
+  if (configured) return configured.replace(/\/$/, "");
+  return "";
+}
+
+export function getSessionToken(): string | null {
+  return localStorage.getItem(SESSION_KEY);
+}
+
+export function setSessionToken(token: string | null) {
+  if (!token) {
+    localStorage.removeItem(SESSION_KEY);
+    return;
+  }
+  localStorage.setItem(SESSION_KEY, token);
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers || {}),
-    },
+  const headers = new Headers(init?.headers || {});
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const token = getSessionToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const response = await fetch(`${apiBase()}${path}`, {
     ...init,
+    headers,
   });
 
   const payload = (await response.json().catch(() => ({}))) as T & { error?: string };
@@ -58,7 +81,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function getStravaConnectUrl(): string {
-  return "/api/auth/strava";
+  return `${apiBase()}/api/auth/strava`;
 }
 
 export function fetchHealth() {
@@ -69,8 +92,12 @@ export function fetchMe() {
   return api<{ authenticated: boolean; athlete?: AuthAthlete }>("/api/auth/me");
 }
 
-export function logout() {
-  return api<{ ok: boolean }>("/api/auth/logout", { method: "POST" });
+export async function logout() {
+  try {
+    await api<{ ok: boolean }>("/api/auth/logout", { method: "POST" });
+  } finally {
+    setSessionToken(null);
+  }
 }
 
 export function fetchActivities() {

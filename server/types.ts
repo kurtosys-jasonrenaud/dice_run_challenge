@@ -39,6 +39,7 @@ export interface SharedRun {
 export interface StoreData {
   sessions: SessionRecord[];
   runs: SharedRun[];
+  oauthStates?: Record<string, number>;
 }
 
 export interface LeaderboardEntry {
@@ -61,4 +62,26 @@ export interface StravaActivitySummary {
   start_date: string;
   start_date_local: string;
   map?: { summary_polyline?: string | null };
+}
+
+export interface StravaEnvConfig {
+  STRAVA_CLIENT_ID: string;
+  STRAVA_CLIENT_SECRET: string;
+  STRAVA_REDIRECT_URI: string;
+  APP_ORIGIN: string;
+  ALLOWED_ORIGINS?: string;
+}
+
+export interface RunStore {
+  createSession(athlete: AthleteProfile, tokens: StravaTokens): Promise<SessionRecord>;
+  getSession(sessionId: string | undefined): Promise<SessionRecord | null>;
+  updateSessionTokens(sessionId: string, tokens: StravaTokens): Promise<SessionRecord | null>;
+  deleteSession(sessionId: string | undefined): Promise<void>;
+  listRuns(): Promise<SharedRun[]>;
+  upsertRun(
+    run: Omit<SharedRun, "id" | "submittedAt"> & { id?: string },
+  ): Promise<{ run: SharedRun; created: boolean }>;
+  buildLeaderboard(): Promise<LeaderboardEntry[]>;
+  saveOAuthState(state: string): Promise<void>;
+  consumeOAuthState(state: string): Promise<boolean>;
 }

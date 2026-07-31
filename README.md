@@ -1,8 +1,10 @@
 # Roll & Run Challenge
 
-Kurtosys company run challenge for **August 2026**. Static React app with localStorage persistence, plus a Strava auth test API for shared runs.
+Kurtosys company run challenge for **August 2026**. Static React app with localStorage persistence, plus a Strava auth API for shared runs and leaderboard.
 
 Live site: https://kurtosys-jasonrenaud.github.io/dice_run_challenge/
+
+Strava test page: https://kurtosys-jasonrenaud.github.io/dice_run_challenge/#/strava-test
 
 ## Stack
 
@@ -13,41 +15,29 @@ Live site: https://kurtosys-jasonrenaud.github.io/dice_run_challenge/
 - Lucide icons
 - LocalStorage persistence for the challenge calendar
 - Hono API for Strava OAuth and a shared run store
+- Cloudflare Worker + KV for the hosted API
 
 ## Architecture
 
 ```text
 src/
 ├── components/
-│   ├── ui/                  Reusable Button, Card, and Badge primitives
-│   ├── ChallengeCalendar.tsx
-│   ├── Dashboard.tsx
-│   ├── DiceRoller.tsx
-│   └── HistoryAndStats.tsx
 ├── hooks/
-│   └── useChallenge.ts      State and LocalStorage persistence
 ├── lib/
-│   ├── challenge.ts         Rules, dates, calendar, and statistics
-│   ├── share.ts             Share brief helpers
-│   ├── stravaApi.ts         Client for the Strava test API
-│   └── utils.ts             Class name helper
+│   └── stravaApi.ts         Client for the Strava API (Bearer session)
 ├── pages/
 │   └── StravaTestPage.tsx   Connect Strava, pick activity, shared board
-├── types/
-│   └── challenge.ts         Domain types
-├── App.tsx                  Challenge UI
-├── index.css                Tailwind theme and global styles
-└── main.tsx                 Entry + hash routing
+├── App.tsx
+└── main.tsx                 Hash routing (#/strava-test)
 
 server/
-├── index.ts                 Strava OAuth + shared runs/leaderboard API
-├── store.ts                 Central JSON store
+├── app.ts                   Shared Hono routes
+├── index.ts                 Local Node server
+├── worker.ts                Cloudflare Worker entry
+├── store.ts                 Memory + KV store adapters
+├── file-store.ts            Local JSON persistence
 └── strava.ts                Strava OAuth helpers
 ```
-
-Office dice rolls are recorded manually in the app. August setup creates rest days and pending challenge slots.
-
-The Strava test page (`#/strava-test`) signs users in with Strava, lets them pick an activity, and writes it to a central store used for the shared leaderboard and run feed.
 
 ## Local development
 
@@ -56,24 +46,66 @@ npm install
 cp .env.example .env
 ```
 
-Fill in Strava credentials in `.env` from [strava.com/settings/api](https://www.strava.com/settings/api):
+Fill Strava credentials in `.env` from [strava.com/settings/api](https://www.strava.com/settings/api):
 
 - Authorization Callback Domain: `localhost`
 - `STRAVA_REDIRECT_URI=http://localhost:5173/api/auth/callback`
-
-Run the UI and API together in two terminals:
 
 ```bash
 npm run dev:api
 npm run dev
 ```
 
-Open:
-
 - Challenge app: http://localhost:5173/dice_run_challenge/
 - Strava test page: http://localhost:5173/dice_run_challenge/#/strava-test
 
-Vite proxies `/api/*` to the Hono server on port `8787`, so session cookies stay on the app origin.
+Leave `VITE_API_BASE_URL` empty locally so Vite proxies `/api` to port `8787`.
+
+## Host the API on Cloudflare (required for GitHub Pages)
+
+1. Log in once:
+
+```bash
+npx wrangler login
+```
+
+2. Create KV and put the id into `wrangler.toml`:
+
+```bash
+npm run cf:kv
+```
+
+3. Set Worker vars/secrets:
+
+```bash
+# After you know the workers.dev URL, update STRAVA_REDIRECT_URI in wrangler.toml vars
+# or set it with:
+npx wrangler secret put STRAVA_CLIENT_ID
+npx wrangler secret put STRAVA_CLIENT_SECRET
+```
+
+Also set these Worker vars (in `wrangler.toml` or dashboard):
+
+- `APP_ORIGIN=https://kurtosys-jasonrenaud.github.io/dice_run_challenge/`
+- `STRAVA_REDIRECT_URI=https://<worker-name>.<account>.workers.dev/api/auth/callback`
+- `ALLOWED_ORIGINS=https://kurtosys-jasonrenaud.github.io,http://localhost:5173`
+
+4. Deploy:
+
+```bash
+npm run cf:deploy
+```
+
+5. In Strava API settings, set Authorization Callback Domain to:
+
+```text
+<worker-name>.<account>.workers.dev
+```
+
+6. In the GitHub repo, add Actions variable `VITE_API_BASE_URL` =
+`https://<worker-name>.<account>.workers.dev`
+
+Then push to `main` (or re-run the Pages workflow) so the frontend talks to the hosted API.
 
 ## Strava test API
 
@@ -89,7 +121,10 @@ Vite proxies `/api/*` to the Hono server on port `8787`, so session cookies stay
 | `GET /api/runs` | All uploaded runs |
 | `GET /api/leaderboard` | Ranked totals from the shared store |
 
-Shared data is written to `server/data/store.json` (gitignored). Anyone using the same running API instance sees the same leaderboard and uploads.
+Local shared data: `server/data/store.json` (gitignored).  
+Hosted shared data: Cloudflare KV binding `STORE`.
+
+Sessions use a Bearer token stored in the browser after OAuth redirect.
 
 ## Build
 
@@ -97,10 +132,8 @@ Shared data is written to `server/data/store.json` (gitignored). Anyone using th
 npm run build
 ```
 
-Static output is written to `dist/`.
-
 ## GitHub Pages
 
-Pushes to `main` trigger `.github/workflows/deploy-pages.yml`, which builds and deploys `dist/` to GitHub Pages.
+Pushes to `main` trigger `.github/workflows/deploy-pages.yml`.
 
-Challenge calendar data remains device-specific in the browser. The Strava shared board only works while the API is running (local for now, or a hosted API later).
+Challenge calendar data remains device-specific in the browser. The Strava shared board uses the hosted Worker API when `VITE_API_BASE_URL` is set.

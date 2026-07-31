@@ -8,7 +8,10 @@
     "dev:api": "tsx server/index.ts",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cf:kv": "wrangler kv namespace create dice-run-store",
+    "cf:secret": "wrangler secret put STRAVA_CLIENT_ID && wrangler secret put STRAVA_CLIENT_SECRET",
+    "cf:deploy": "wrangler deploy"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
@@ -35,6 +38,7 @@
     "tsx": "^4.20.6",
     "typescript": "latest",
     "typescript-eslint": "latest",
-    "vite": "7.3.6"
+    "vite": "7.3.6",
+    "wrangler": "^4.117.0"
   }
 }
