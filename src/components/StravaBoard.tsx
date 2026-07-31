@@ -89,7 +89,8 @@ export function StravaBoard() {
   }, [queryMessage, refreshShared]);
 
   useEffect(() => {
-    void refreshSession();
+    const timer = window.setTimeout(() => void refreshSession(), 0);
+    return () => window.clearTimeout(timer);
   }, [refreshSession]);
 
   useEffect(() => {

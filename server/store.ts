@@ -1,11 +1,9 @@
 import type {
-  AthleteProfile,
   LeaderboardEntry,
   RunStore,
   SessionRecord,
   SharedRun,
   StoreData,
-  StravaTokens,
 } from "./types.js";
 
 const emptyStore = (): StoreData => ({ sessions: [], runs: [], oauthStates: {} });
@@ -42,7 +40,7 @@ function rankLeaderboard(runs: SharedRun[]): LeaderboardEntry[] {
 }
 
 export function createMemoryStore(initial?: StoreData): RunStore & { snapshot(): StoreData } {
-  let data: StoreData = initial
+  const data: StoreData = initial
     ? {
         sessions: [...initial.sessions],
         runs: [...initial.runs],

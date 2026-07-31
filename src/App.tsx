@@ -1,10 +1,8 @@
 import { Dices, Moon, Route, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ChallengeCalendar } from "./components/ChallengeCalendar";
 import { ChallengeStrip } from "./components/ChallengeStrip";
 import { Dashboard } from "./components/Dashboard";
 import { DiceRoller } from "./components/DiceRoller";
-import { HistoryAndStats } from "./components/HistoryAndStats";
 import { Reveal } from "./components/Reveal";
 import { ShareBrief } from "./components/ShareBrief";
 import { StravaBoard } from "./components/StravaBoard";
@@ -13,7 +11,6 @@ import { useChallenge } from "./hooks/useChallenge";
 import kurtosysLogo from "../logo-w.svg?url";
 import {
   CHALLENGE_LABEL,
-  CHALLENGE_YEAR,
   getChallengeDate,
   getChallengeMonth,
   getRollType,
@@ -108,37 +105,6 @@ export default function App() {
     : undefined;
 
   const canRollToday = getRollType(today) !== null && rollAppliesToChallenge(today);
-  const augustRolls = challenge.rolls.filter((roll) =>
-    roll.challengeDate.startsWith(`${CHALLENGE_YEAR}-08`) ||
-    (roll.type === "weekend" && roll.challengeDate.startsWith(`${CHALLENGE_YEAR}-07-31`)),
-  );
-
-  function clearHistory() {
-    if (window.confirm("Clear all August 2026 challenge data from this device?")) {
-      challenge.clearHistory();
-    }
-  }
-
-  function handleGenerateAugust() {
-    const hasAugust = challenge.rolls.some(
-      (roll) =>
-        roll.challengeDate.startsWith(`${CHALLENGE_YEAR}-08`) ||
-        (roll.type === "weekend" && roll.challengeDate.startsWith(`${CHALLENGE_YEAR}-07-31`)),
-    );
-    const confirmed = hasAugust
-      ? window.confirm(
-          "Reset the August 2026 calendar scaffold? Confirmed office rolls will be replaced with pending slots.",
-        )
-      : window.confirm(
-          "Set up August 2026 with Monday rest days and pending challenge slots? Record each office dice result as it happens.",
-        );
-    if (!confirmed) return;
-
-    const result = challenge.generateAugust(CHALLENGE_YEAR);
-    window.alert(
-      `August 2026 ready: ${result.summary.restDays} rest days, ${result.summary.weekdayChallenges} weekday slots, ${result.summary.weekendChallenges} weekend slots. Record office rolls as they happen.`,
-    );
-  }
 
   return (
     <div className="min-h-screen">
@@ -158,8 +124,6 @@ export default function App() {
             <a className="transition hover:text-signal" href="#dashboard">Dashboard</a>
             <a className="transition hover:text-signal" href="#strava">Strava</a>
             <a className="transition hover:text-signal" href="#share">Share</a>
-            <a className="transition hover:text-signal" href="#calendar">Calendar</a>
-            <a className="transition hover:text-signal" href="#history">History</a>
           </nav>
           <Button
             variant="ghost"
@@ -195,11 +159,11 @@ export default function App() {
                 afternoon, record the result, and plan tomorrow’s run.
               </p>
               <a
-                href={canRollToday ? "#roller" : "#calendar"}
+                href={canRollToday ? "#roller" : "#strava"}
                 className="hero-enter hero-enter--5 group mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-signal px-6 text-sm font-bold text-ink transition hover:-translate-y-0.5 hover:bg-white"
               >
                 <Route className="size-4 transition-transform group-hover:translate-x-1" />
-                {canRollToday ? "Record today’s office roll" : "Set up August 2026"}
+                {canRollToday ? "Record today’s office roll" : "Upload from Strava"}
               </a>
             </div>
           </section>
@@ -226,26 +190,7 @@ export default function App() {
             />
           </div>
         </Reveal>
-        <Reveal>
-          <div id="calendar">
-            <ChallengeCalendar
-              month={month}
-              rolls={challenge.rolls}
-              augustGeneratedYear={challenge.meta.augustGeneratedYear}
-              onGenerateAugust={handleGenerateAugust}
-            />
-          </div>
-        </Reveal>
         <Reveal><RuleGrid /></Reveal>
-        <Reveal>
-          <div id="history">
-            <HistoryAndStats
-              rolls={augustRolls}
-              stats={challenge.stats}
-              onClear={clearHistory}
-            />
-          </div>
-        </Reveal>
       </main>
 
       <footer className="mt-16 bg-ink text-white">
