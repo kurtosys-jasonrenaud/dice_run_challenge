@@ -56,9 +56,9 @@ export function ShareBrief({ rolls, logoUrl }: ShareBriefProps) {
     <section id="share" aria-labelledby="share-title">
       <div className="mb-5">
         <p className="eyebrow">Send to the group</p>
-        <h2 id="share-title" className="section-title">Share today’s brief</h2>
+        <h2 id="share-title" className="section-title">Share tomorrow’s run</h2>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
-          Copy a ready message or download a branded image for Slack, Teams, or WhatsApp.
+          Copy a message or image for Slack, Teams, or WhatsApp.
         </p>
       </div>
 
@@ -69,7 +69,7 @@ export function ShareBrief({ rolls, logoUrl }: ShareBriefProps) {
             <div className="absolute right-10 top-10 size-3 animate-pulse rounded-full bg-signal shadow-[0_0_20px_var(--signal)]" />
             <p className="eyebrow text-signal">Kurtosys · August 2026</p>
             <p className="mt-4 text-sm font-semibold text-white/70">
-              {brief.isWeekend ? "Weekend brief" : "Today’s challenge"}
+              {brief.isWeekend ? "Weekend brief" : "Tomorrow’s run"}
             </p>
             <p className="mt-2 text-sm text-white/70">{brief.dateLabel}</p>
             <p className="mt-6 font-display text-5xl font-black tracking-tight text-signal sm:text-6xl">
@@ -80,61 +80,45 @@ export function ShareBrief({ rolls, logoUrl }: ShareBriefProps) {
             {brief.diceLine && (
               <p className="mt-5 text-sm font-semibold text-signal">{brief.diceLine}</p>
             )}
-            {brief.nextLine && (
-              <div className="mt-6 inline-flex rounded-full bg-white/10 px-4 py-2 text-sm font-semibold">
-                {brief.nextLine}
-              </div>
-            )}
           </div>
         </Card>
 
-        <Card className="lift-card flex flex-col p-5 sm:p-6">
+        <Card className="lift-card flex flex-col justify-center gap-3 p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <Share2 className="size-5 text-primary" />
-            <h3 className="font-display text-xl font-bold">Copy and send</h3>
+            <h3 className="font-display text-xl font-bold">Share</h3>
           </div>
 
-          <label className="mt-4 text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
-            Message preview
-          </label>
-          <textarea
-            readOnly
-            value={message}
-            className="mt-2 min-h-52 w-full resize-none rounded-2xl border border-border bg-muted/50 p-4 text-sm leading-6 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+          <Button onClick={handleCopyText}>
+            {status === "copied-text" ? <Check className="size-4" /> : <Copy className="size-4" />}
+            {status === "copied-text" ? "Message copied" : "Copy message"}
+          </Button>
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() =>
+              withImage(
+                async (blob) => downloadBlob(blob, shareFilename(brief.date)),
+                "downloaded",
+              )
+            }
+          >
+            <Download className="size-4" />
+            {status === "downloaded" ? "Image downloaded" : busy ? "Creating image…" : "Download image"}
+          </Button>
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() => withImage(copyImage, "copied-image")}
+          >
+            <ImageDown className="size-4" />
+            {status === "copied-image" ? "Image copied" : "Copy image"}
+          </Button>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-1">
-            <Button onClick={handleCopyText}>
-              {status === "copied-text" ? <Check className="size-4" /> : <Copy className="size-4" />}
-              {status === "copied-text" ? "Message copied" : "Copy message"}
-            </Button>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() =>
-                withImage(
-                  async (blob) => downloadBlob(blob, shareFilename(brief.date)),
-                  "downloaded",
-                )
-              }
-            >
-              <Download className="size-4" />
-              {status === "downloaded" ? "Image downloaded" : busy ? "Creating image…" : "Download image"}
-            </Button>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() => withImage(copyImage, "copied-image")}
-            >
-              <ImageDown className="size-4" />
-              {status === "copied-image" ? "Image copied" : "Copy image"}
-            </Button>
-          </div>
-
-          <p className="mt-4 text-xs leading-5 text-muted-foreground" aria-live="polite">
+          <p className="text-xs leading-5 text-muted-foreground" aria-live="polite">
             {status === "error"
               ? "Could not copy or create the share file in this browser. Try Download image instead."
-              : "Tip: copy the message for chat, then attach the downloaded image."}
+              : null}
           </p>
         </Card>
       </div>

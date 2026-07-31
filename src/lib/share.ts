@@ -25,9 +25,15 @@ export interface ShareBriefData {
   distanceKm: number | null;
 }
 
+export function getShareDate(from: Date = new Date()): Date {
+  const shareDate = new Date(from);
+  shareDate.setDate(from.getDate() + 1);
+  return shareDate;
+}
+
 export function buildShareBrief(
   rolls: ChallengeRoll[],
-  date: Date = new Date(),
+  date: Date = getShareDate(),
 ): ShareBriefData {
   const day = date.getDay();
   const roll = getRollForDate(rolls, date);
@@ -38,18 +44,6 @@ export function buildShareBrief(
     year: "numeric",
   });
 
-  const tomorrow = new Date(date);
-  tomorrow.setDate(date.getDate() + 1);
-  const nextRoll = getRollForDate(rolls, tomorrow);
-  const nextLine =
-    nextRoll && !isPendingRoll(nextRoll)
-      ? `Tomorrow: ${getChallengeLabel(nextRoll.distanceKm, nextRoll.type, nextRoll.diceValue)}`
-      : nextRoll && isPendingRoll(nextRoll)
-        ? "Tomorrow: waiting for today’s office roll"
-        : day === 0
-          ? null
-          : "Tomorrow: not recorded yet";
-
   if (day === 1 && (!roll || roll.type === "rest")) {
     return {
       date,
@@ -58,7 +52,7 @@ export function buildShareBrief(
       detail: "Monday is always a rest day.",
       note: "No distance to complete. Recover and reset.",
       diceLine: null,
-      nextLine,
+      nextLine: null,
       isRest: true,
       isWeekend: false,
       isPending: false,
@@ -71,8 +65,8 @@ export function buildShareBrief(
       date,
       dateLabel,
       headline: "Pending",
-      detail: "Today’s challenge has not been recorded yet.",
-      note: "Record the office dice result when it is rolled.",
+      detail: "Tomorrow’s challenge has not been recorded yet.",
+      note: "Record today’s office dice result to unlock tomorrow’s run.",
       diceLine: null,
       nextLine: null,
       isRest: false,
@@ -99,7 +93,7 @@ export function buildShareBrief(
         })}`,
     note: isRest
       ? "Rest day. No distance to complete."
-      : "Complete any time today. Run, jog, or walk.",
+      : "Complete any time tomorrow. Run, jog, or walk.",
     diceLine:
       roll.diceValue !== null
         ? `Office dice: ${roll.diceValue}${
@@ -112,7 +106,7 @@ export function buildShareBrief(
               : ""
           }`
         : null,
-    nextLine,
+    nextLine: null,
     isRest,
     isWeekend,
     isPending: false,
@@ -124,17 +118,13 @@ export function buildShareMessage(brief: ShareBriefData): string {
   const lines = [
     `Kurtosys Roll & Run · ${CHALLENGE_LABEL}`,
     "",
-    brief.isWeekend ? `Weekend · ${brief.dateLabel}` : `Today · ${brief.dateLabel}`,
+    brief.isWeekend ? `Weekend · ${brief.dateLabel}` : `Tomorrow · ${brief.dateLabel}`,
     `Challenge: ${brief.headline}`,
   ];
 
   if (brief.diceLine) lines.push(brief.diceLine);
   if (brief.detail) lines.push(brief.detail);
   lines.push(brief.note);
-  if (brief.nextLine) {
-    lines.push("");
-    lines.push(brief.nextLine);
-  }
   lines.push("");
   lines.push(SITE_URL);
 
@@ -222,7 +212,7 @@ export async function createShareImage(
 
   ctx.fillStyle = "#FFFFFF";
   ctx.font = "600 34px 'Plus Jakarta Sans', sans-serif";
-  ctx.fillText(brief.isWeekend ? "Weekend brief" : "Today’s challenge", 72, 360);
+  ctx.fillText(brief.isWeekend ? "Weekend brief" : "Tomorrow’s run", 72, 360);
 
   ctx.fillStyle = "rgba(255,255,255,0.72)";
   ctx.font = "500 28px 'Plus Jakarta Sans', sans-serif";
@@ -251,15 +241,6 @@ export async function createShareImage(
     ctx.fillStyle = "#31FF9C";
     ctx.font = "600 28px 'Plus Jakarta Sans', sans-serif";
     ctx.fillText(brief.diceLine, 110, 900);
-  }
-
-  if (brief.nextLine) {
-    roundRect(ctx, 72, 960, width - 144, 120, 28);
-    ctx.fillStyle = "rgba(255,255,255,0.1)";
-    ctx.fill();
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "700 32px 'Plus Jakarta Sans', sans-serif";
-    ctx.fillText(brief.nextLine, 110, 1034);
   }
 
   ctx.fillStyle = "rgba(255,255,255,0.55)";
