@@ -148,31 +148,100 @@ a {
   line-height: 1.12;
 }
 
-.dice-grid {
-  display: grid;
+.die-scene {
+  --die-size: clamp(7.5rem, 25vw, 10rem);
+  --die-depth: calc(var(--die-size) / 2);
   flex: 0 0 auto;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  width: clamp(8.5rem, 30vw, 11rem);
-  aspect-ratio: 1;
-  padding: 1.25rem;
-  border: 1px solid rgb(255 255 255 / 0.3);
-  border-radius: 1.25rem;
-  background: linear-gradient(145deg, #fff, #d9e3fb);
-  box-shadow:
-    0 28px 55px -20px rgb(0 0 0 / 0.7),
-    inset 0 1px 0 rgb(255 255 255);
+  width: var(--die-size);
+  height: var(--die-size);
+  margin: 1.5rem;
+  perspective: 800px;
+  filter: drop-shadow(0 30px 24px rgb(0 0 0 / 0.45));
   animation: dice-float 5s ease-in-out infinite;
 }
 
-.dice-pip {
+.die-cube {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.die-cube--1 {
+  transform: rotateX(-10deg) rotateY(10deg);
+}
+
+.die-cube--2 {
+  transform: rotateX(-100deg) rotateY(10deg);
+}
+
+.die-cube--3 {
+  transform: rotateX(-10deg) rotateY(-80deg);
+}
+
+.die-cube--4 {
+  transform: rotateX(-10deg) rotateY(100deg);
+}
+
+.die-cube--5 {
+  transform: rotateX(80deg) rotateY(10deg);
+}
+
+.die-cube--6 {
+  transform: rotateX(-10deg) rotateY(190deg);
+}
+
+.die-face {
+  position: absolute;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 100%;
+  height: 100%;
+  padding: 1rem;
+  border: 1px solid rgb(7 25 53 / 0.12);
+  border-radius: 1.15rem;
+  background: linear-gradient(145deg, #ffffff 10%, #e9effd 100%);
+  box-shadow:
+    inset 0 2px 1px rgb(255 255 255 / 0.9),
+    inset 0 -8px 18px rgb(3 66 228 / 0.08);
+  backface-visibility: hidden;
+}
+
+.die-face--1 {
+  transform: rotateY(0deg) translateZ(var(--die-depth));
+}
+
+.die-face--2 {
+  transform: rotateX(90deg) translateZ(var(--die-depth));
+}
+
+.die-face--3 {
+  transform: rotateY(90deg) translateZ(var(--die-depth));
+}
+
+.die-face--4 {
+  transform: rotateY(-90deg) translateZ(var(--die-depth));
+}
+
+.die-face--5 {
+  transform: rotateX(-90deg) translateZ(var(--die-depth));
+}
+
+.die-face--6 {
+  transform: rotateY(180deg) translateZ(var(--die-depth));
+}
+
+.die-pip {
   place-self: center;
-  width: 0.82rem;
+  width: clamp(0.65rem, 2vw, 0.9rem);
   aspect-ratio: 1;
   border-radius: 999px;
   background: #0342e4;
-  box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.25);
-  transition: opacity 80ms ease;
+  box-shadow:
+    inset 0 2px 3px rgb(0 0 0 / 0.28),
+    0 1px 1px rgb(255 255 255 / 0.65);
 }
 
 .runner-lines {
@@ -281,10 +350,10 @@ a {
 @keyframes dice-float {
   0%,
   100% {
-    transform: translateY(0) rotate(-1deg);
+    transform: translateY(0);
   }
   50% {
-    transform: translateY(-0.6rem) rotate(1deg);
+    transform: translateY(-0.65rem);
   }
 }
 

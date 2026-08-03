@@ -24,13 +24,19 @@ const PIPS: Record<DiceValue, number[]> = {
 
 function Die({ value }: { value: DiceValue }) {
   return (
-    <div className="dice-grid" role="img" aria-label={`Dice showing ${value}`}>
-      {Array.from({ length: 9 }, (_, index) => (
-        <span
-          key={index}
-          className={PIPS[value].includes(index) ? "dice-pip opacity-100" : "dice-pip opacity-0"}
-        />
-      ))}
+    <div className="die-scene" role="img" aria-label={`Dice showing ${value}`}>
+      <div className={`die-cube die-cube--${value}`}>
+        {FACES.map((face) => (
+          <div key={face} className={`die-face die-face--${face}`} aria-hidden="true">
+            {Array.from({ length: 9 }, (_, index) => (
+              <span
+                key={index}
+                className={cn("die-pip", !PIPS[face].includes(index) && "opacity-0")}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
