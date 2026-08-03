@@ -11,3 +11,4 @@ uploads/**/*.jpg
 uploads/**/*.jpeg
 uploads/**/*.webp
 server/data/*.json
+.wrangler/
