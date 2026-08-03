@@ -60,6 +60,12 @@ export function setSessionToken(token: string | null) {
   localStorage.setItem(SESSION_KEY, token);
 }
 
+/** Must run before the app strips the OAuth query string from the URL. */
+export function captureSessionFromUrl() {
+  const session = new URLSearchParams(window.location.search).get("session");
+  if (session) setSessionToken(session);
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers || {});
   if (!headers.has("Content-Type")) {

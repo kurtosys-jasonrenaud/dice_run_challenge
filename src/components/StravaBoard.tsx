@@ -19,7 +19,6 @@ import {
   formatMovingTime,
   getStravaConnectUrl,
   logout,
-  setSessionToken,
   submitRun,
   type AuthAthlete,
   type LeaderboardEntry,
@@ -53,10 +52,6 @@ export function StravaBoard() {
   }, []);
 
   const refreshSession = useCallback(async () => {
-    const params = new URLSearchParams(window.location.search);
-    const session = params.get("session");
-    if (session) setSessionToken(session);
-
     setStatus("loading");
     setMessage(queryMessage);
     try {
