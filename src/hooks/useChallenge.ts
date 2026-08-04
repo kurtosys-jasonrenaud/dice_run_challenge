@@ -1,17 +1,19 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   calculateStats,
-  challengeTouchesAugust,
   createChallengeEntry,
+  ensureAugustScaffold,
   generateAugustCalendar,
   getAugustYear,
   getChallengeDate,
   getRollForDate,
   getRollType,
   isPendingRoll,
+  mergeSharedTargets,
   normalizeRoll,
   toIsoDate,
 } from "../lib/challenge";
+import { fetchTargets } from "../lib/stravaApi";
 import type {
   AugustGenerationResult,
   ChallengeRoll,
@@ -67,6 +69,42 @@ export function useChallenge(month: Date) {
     setMeta(next);
     localStorage.setItem(META_KEY, JSON.stringify(next));
   }, []);
+
+  // Shared office targets are the source of truth across devices.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function hydrateFromSharedTargets() {
+      try {
+        const { targets } = await fetchTargets();
+        if (cancelled) return;
+
+        const year = getAugustYear();
+        const needsScaffold = readMeta().augustGeneratedYear !== year;
+
+        setRolls((prev) => {
+          let next = needsScaffold ? ensureAugustScaffold(prev, year).rolls : prev;
+          next = mergeSharedTargets(next, targets);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+          return next;
+        });
+
+        if (needsScaffold) {
+          persistMeta({
+            augustGeneratedYear: year,
+            augustGeneratedAt: new Date().toISOString(),
+          });
+        }
+      } catch {
+        // Offline or API unavailable: keep whatever is already on this device.
+      }
+    }
+
+    void hydrateFromSharedTargets();
+    return () => {
+      cancelled = true;
+    };
+  }, [persistMeta]);
 
   const rollForDate = useCallback(
     (rollDate: Date, value: DiceValue, distanceKm: number) => {
@@ -126,8 +164,8 @@ export function useChallenge(month: Date) {
   const generateAugust = useCallback(
     (year = getAugustYear()): AugustGenerationResult => {
       const generated = generateAugustCalendar(year);
-      const retained = rolls.filter((roll) => !challengeTouchesAugust(roll, year));
-      persist([...retained, ...generated.entries]);
+      const scaffolded = ensureAugustScaffold(rolls, year);
+      persist(scaffolded.rolls);
       persistMeta({
         augustGeneratedYear: year,
         augustGeneratedAt: new Date().toISOString(),

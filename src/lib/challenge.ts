@@ -220,6 +220,91 @@ export function normalizeRoll(raw: Partial<ChallengeRoll> & {
   };
 }
 
+/** Shared office target from the API, mapped into a local challenge roll. */
+export function rollFromSharedTarget(target: {
+  challengeDate: string;
+  distanceKm: number;
+  diceValue: number | null;
+  type: ChallengeType;
+  publishedAt?: string;
+}): ChallengeRoll {
+  const challenge = fromIsoDate(target.challengeDate);
+  const rollDate = new Date(challenge);
+  rollDate.setDate(challenge.getDate() - 1);
+
+  return normalizeRoll({
+    rollDate: target.type === "rest" ? "" : toIsoDate(rollDate),
+    rolledAt: target.publishedAt,
+    challengeDate: target.challengeDate,
+    diceValue: target.diceValue as DiceValue | null,
+    distanceKm: target.distanceKm,
+    type: target.type,
+    source: "manual",
+  });
+}
+
+/**
+ * Overlay shared office targets onto local rolls so every device sees the same
+ * assigned distances. Confirmed shared targets win over pending local scaffold.
+ */
+export function mergeSharedTargets(
+  rolls: ChallengeRoll[],
+  targets: Array<{
+    challengeDate: string;
+    distanceKm: number;
+    diceValue: number | null;
+    type: ChallengeType;
+    publishedAt?: string;
+  }>,
+): ChallengeRoll[] {
+  if (targets.length === 0) return rolls;
+
+  const byDate = new Map(rolls.map((roll) => [roll.challengeDate, roll]));
+  for (const target of targets) {
+    const incoming = rollFromSharedTarget(target);
+    const existing = byDate.get(target.challengeDate);
+    if (!existing) {
+      byDate.set(target.challengeDate, incoming);
+      continue;
+    }
+    byDate.set(target.challengeDate, {
+      ...existing,
+      diceValue: incoming.diceValue,
+      distanceKm: incoming.distanceKm,
+      type: incoming.type,
+      source: "manual",
+      rolledAt: incoming.rolledAt,
+      rollDate: incoming.rollDate || existing.rollDate,
+    });
+  }
+  return [...byDate.values()];
+}
+
+/** Ensure August scaffold exists, keeping any already-confirmed rolls. */
+export function ensureAugustScaffold(
+  rolls: ChallengeRoll[],
+  year = getAugustYear(),
+): { rolls: ChallengeRoll[]; generated: boolean } {
+  const generated = generateAugustCalendar(year);
+  const retained = rolls.filter((roll) => !challengeTouchesAugust(roll, year));
+  const scaffold = new Map(
+    generated.entries.map((entry) => [entry.challengeDate, entry]),
+  );
+
+  for (const roll of rolls) {
+    if (!challengeTouchesAugust(roll, year)) continue;
+    const existing = scaffold.get(roll.challengeDate);
+    if (!existing || !isPendingRoll(roll)) {
+      scaffold.set(roll.challengeDate, roll);
+    }
+  }
+
+  return {
+    rolls: [...retained, ...scaffold.values()],
+    generated: true,
+  };
+}
+
 export function getRollForDate(
   rolls: ChallengeRoll[],
   date: Date,
