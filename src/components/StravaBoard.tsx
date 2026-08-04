@@ -398,8 +398,7 @@ export function StravaBoard() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold">{entry.athleteName}</p>
                         <p className="text-xs text-muted-foreground">
-                          {entry.daysMet || 0} met · {entry.daysShort || 0} short · {entry.runCount}{" "}
-                          run{entry.runCount === 1 ? "" : "s"}
+                          {entry.daysMet || 0} day{(entry.daysMet || 0) === 1 ? "" : "s"} met
                         </p>
                       </div>
                       <p className="text-sm font-bold">{entry.totalDistanceKm} km</p>

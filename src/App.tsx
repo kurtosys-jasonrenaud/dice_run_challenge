@@ -106,6 +106,8 @@ export default function App() {
     : undefined;
 
   const canRollToday = getRollType(today) !== null && rollAppliesToChallenge(today);
+  const hasRolledToday = challenge.hasRolledFor(today);
+  const showRoller = challenge.synced && canRollToday && !hasRolledToday;
 
   return (
     <div className="min-h-screen">
@@ -123,7 +125,9 @@ export default function App() {
           </a>
           <nav className="hidden items-center gap-7 text-sm font-semibold text-white/70 md:flex">
             <a className="transition hover:text-signal" href="#dashboard">Dashboard</a>
-            <a className="transition hover:text-signal" href="#roller">Dice</a>
+            {showRoller && (
+              <a className="transition hover:text-signal" href="#roller">Dice</a>
+            )}
             <a className="transition hover:text-signal" href="#strava">Runs</a>
             <a className="transition hover:text-signal" href="#share">Share</a>
           </nav>
@@ -161,11 +165,11 @@ export default function App() {
                 afternoon, record the result, and plan tomorrow’s run.
               </p>
               <a
-                href="#roller"
+                href={showRoller ? "#roller" : "#strava"}
                 className="hero-enter hero-enter--5 group mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-signal px-6 text-sm font-bold text-ink transition hover:-translate-y-0.5 hover:bg-white"
               >
                 <Route className="size-4 transition-transform group-hover:translate-x-1" />
-                {canRollToday ? "Record today’s office roll" : "View the dice recorder"}
+                {showRoller ? "Record today’s office roll" : "See the runs board"}
               </a>
             </div>
           </section>
@@ -177,31 +181,33 @@ export default function App() {
         <Reveal>
           <div id="dashboard"><Dashboard {...challenge} /></div>
         </Reveal>
-        <Reveal delay={40}>
-          <div id="roller">
-            <DiceRoller
-              hasRolled={challenge.hasRolledFor(today)}
-              existingRoll={existingRoll}
-              onSave={(value, distance) => {
-                const roll = challenge.rollForDate(today, value, distance);
-                if (!roll) return;
-                void publishTarget({
-                  challengeDate: roll.challengeDate,
-                  distanceKm: roll.distanceKm,
-                  diceValue: roll.diceValue,
-                  type: roll.type,
-                  publishedBy: "Office dice",
-                }).catch(() => {
-                  // Local roll still saved if the shared target publish fails.
-                });
-              }}
-            />
-          </div>
-        </Reveal>
-        <Reveal delay={60}>
+        {showRoller && (
+          <Reveal delay={40}>
+            <div id="roller">
+              <DiceRoller
+                hasRolled={hasRolledToday}
+                existingRoll={existingRoll}
+                onSave={(value, distance) => {
+                  const roll = challenge.rollForDate(today, value, distance);
+                  if (!roll) return;
+                  void publishTarget({
+                    challengeDate: roll.challengeDate,
+                    distanceKm: roll.distanceKm,
+                    diceValue: roll.diceValue,
+                    type: roll.type,
+                    publishedBy: "Office dice",
+                  }).catch(() => {
+                    // Local roll still saved if the shared target publish fails.
+                  });
+                }}
+              />
+            </div>
+          </Reveal>
+        )}
+        <Reveal delay={showRoller ? 60 : 40}>
           <StravaBoard />
         </Reveal>
-        <Reveal delay={80}>
+        <Reveal delay={showRoller ? 80 : 60}>
           <ShareBrief rolls={challenge.rolls} logoUrl={kurtosysLogo} />
         </Reveal>
         <Reveal><RuleGrid /></Reveal>

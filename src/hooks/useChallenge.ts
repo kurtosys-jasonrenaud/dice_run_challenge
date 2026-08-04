@@ -59,6 +59,7 @@ function readMeta(): ChallengeMeta {
 export function useChallenge(month: Date) {
   const [rolls, setRolls] = useState<ChallengeRoll[]>(readRolls);
   const [meta, setMeta] = useState<ChallengeMeta>(readMeta);
+  const [synced, setSynced] = useState(false);
 
   const persist = useCallback((next: ChallengeRoll[]) => {
     setRolls(next);
@@ -97,6 +98,8 @@ export function useChallenge(month: Date) {
         }
       } catch {
         // Offline or API unavailable: keep whatever is already on this device.
+      } finally {
+        if (!cancelled) setSynced(true);
       }
     }
 
@@ -205,6 +208,7 @@ export function useChallenge(month: Date) {
     weekend,
     stats,
     meta,
+    synced,
     rollForDate,
     hasRolledFor,
     generateAugust,
