@@ -38,10 +38,9 @@ function readSessionId(c: { req: { header: (name: string) => string | undefined 
 
 function buildAppRedirect(appOrigin: string, params: Record<string, string>): string {
   const url = new URL(appOrigin);
-  for (const [key, value] of Object.entries(params)) {
-    url.searchParams.set(key, value);
-  }
-  url.hash = "strava";
+  // Keep OAuth result in the hash so GitHub Pages / static hosting cannot drop it.
+  const hashParams = new URLSearchParams(params);
+  url.hash = `strava?${hashParams.toString()}`;
   return url.toString();
 }
 

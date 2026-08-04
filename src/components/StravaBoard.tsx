@@ -17,8 +17,12 @@ import {
   fetchRuns,
   formatDateLabel,
   formatMovingTime,
+  cleanOAuthUrl,
+  getSessionToken,
   getStravaConnectUrl,
   logout,
+  readOAuthFeedback,
+  setSessionToken,
   submitRun,
   type AuthAthlete,
   type LeaderboardEntry,
@@ -39,10 +43,9 @@ export function StravaBoard() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const queryMessage = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("strava") === "connected") return "Connected to Strava.";
-    const error = params.get("strava_error");
-    return error ? `Strava auth error: ${error}` : null;
+    const feedback = readOAuthFeedback();
+    if (feedback.connected) return "Connected to Strava.";
+    return feedback.error ? `Strava auth error: ${feedback.error}` : null;
   }, []);
 
   const refreshShared = useCallback(async () => {
@@ -61,12 +64,23 @@ export function StravaBoard() {
       const me = await fetchMe();
       if (me.authenticated && me.athlete) {
         setAthlete(me.athlete);
-        const activityPayload = await fetchActivities();
-        setActivities(activityPayload.activities);
-        if (activityPayload.activities[0]) {
-          setSelectedId(activityPayload.activities[0].id);
+        try {
+          const activityPayload = await fetchActivities();
+          setActivities(activityPayload.activities);
+          if (activityPayload.activities[0]) {
+            setSelectedId(activityPayload.activities[0].id);
+          }
+        } catch (activityError) {
+          setActivities([]);
+          setSelectedId(null);
+          setMessage(
+            activityError instanceof Error
+              ? activityError.message
+              : "Connected, but Strava activities could not be loaded.",
+          );
         }
       } else {
+        if (getSessionToken()) setSessionToken(null);
         setAthlete(null);
         setActivities([]);
         setSelectedId(null);
@@ -89,13 +103,7 @@ export function StravaBoard() {
   }, [refreshSession]);
 
   useEffect(() => {
-    if (!window.location.search) return;
-    const url = new URL(window.location.href);
-    url.search = "";
-    if (!url.hash || url.hash === "#/" || url.hash.startsWith("#/strava")) {
-      url.hash = "strava";
-    }
-    window.history.replaceState({}, "", `${url.pathname}${url.hash}`);
+    cleanOAuthUrl();
   }, []);
 
   async function handleLogout() {

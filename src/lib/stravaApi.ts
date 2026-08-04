@@ -60,10 +60,43 @@ export function setSessionToken(token: string | null) {
   localStorage.setItem(SESSION_KEY, token);
 }
 
-/** Must run before the app strips the OAuth query string from the URL. */
+function oauthParamsFromLocation(): URLSearchParams {
+  const fromSearch = new URLSearchParams(window.location.search);
+  if (fromSearch.has("session") || fromSearch.has("strava") || fromSearch.has("strava_error")) {
+    return fromSearch;
+  }
+
+  const hash = window.location.hash.replace(/^#/, "");
+  const queryIndex = hash.indexOf("?");
+  if (queryIndex >= 0) {
+    return new URLSearchParams(hash.slice(queryIndex + 1));
+  }
+
+  return new URLSearchParams();
+}
+
+/** Must run before the app strips the OAuth result from the URL. */
 export function captureSessionFromUrl() {
-  const session = new URLSearchParams(window.location.search).get("session");
+  const session = oauthParamsFromLocation().get("session");
   if (session) setSessionToken(session);
+}
+
+export function readOAuthFeedback(): { connected: boolean; error: string | null } {
+  const params = oauthParamsFromLocation();
+  return {
+    connected: params.get("strava") === "connected",
+    error: params.get("strava_error"),
+  };
+}
+
+/** Drop OAuth params from search/hash while keeping #strava. */
+export function cleanOAuthUrl() {
+  const url = new URL(window.location.href);
+  url.search = "";
+  const hash = url.hash.replace(/^#/, "");
+  const path = hash.split("?")[0] || "strava";
+  url.hash = path.startsWith("strava") || path === "" ? "strava" : path;
+  window.history.replaceState({}, "", `${url.pathname}${url.hash}`);
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
