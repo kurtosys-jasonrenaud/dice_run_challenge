@@ -123,7 +123,8 @@ export default function App() {
           </a>
           <nav className="hidden items-center gap-7 text-sm font-semibold text-white/70 md:flex">
             <a className="transition hover:text-signal" href="#dashboard">Dashboard</a>
-            <a className="transition hover:text-signal" href="#strava">Strava</a>
+            <a className="transition hover:text-signal" href="#roller">Dice</a>
+            <a className="transition hover:text-signal" href="#strava">Runs</a>
             <a className="transition hover:text-signal" href="#share">Share</a>
           </nav>
           <Button
@@ -160,11 +161,11 @@ export default function App() {
                 afternoon, record the result, and plan tomorrow’s run.
               </p>
               <a
-                href={canRollToday ? "#roller" : "#strava"}
+                href="#roller"
                 className="hero-enter hero-enter--5 group mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-signal px-6 text-sm font-bold text-ink transition hover:-translate-y-0.5 hover:bg-white"
               >
                 <Route className="size-4 transition-transform group-hover:translate-x-1" />
-                {canRollToday ? "Record today’s office roll" : "Upload from Strava"}
+                {canRollToday ? "Record today’s office roll" : "View the dice recorder"}
               </a>
             </div>
           </section>
@@ -177,12 +178,6 @@ export default function App() {
           <div id="dashboard"><Dashboard {...challenge} /></div>
         </Reveal>
         <Reveal delay={40}>
-          <StravaBoard />
-        </Reveal>
-        <Reveal delay={60}>
-          <ShareBrief rolls={challenge.rolls} logoUrl={kurtosysLogo} />
-        </Reveal>
-        <Reveal delay={80}>
           <div id="roller">
             <DiceRoller
               hasRolled={challenge.hasRolledFor(today)}
@@ -202,6 +197,12 @@ export default function App() {
               }}
             />
           </div>
+        </Reveal>
+        <Reveal delay={60}>
+          <StravaBoard />
+        </Reveal>
+        <Reveal delay={80}>
+          <ShareBrief rolls={challenge.rolls} logoUrl={kurtosysLogo} />
         </Reveal>
         <Reveal><RuleGrid /></Reveal>
       </main>
