@@ -210,7 +210,7 @@ export function StravaBoard() {
             Runs and targets
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
-            Office targets come from the dice recorder below. Uploaded runs show whether the day was
+            Office targets come from the dice recorder above. Uploaded runs show whether the day was
             met.
           </p>
         </div>
