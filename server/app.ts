@@ -230,6 +230,55 @@ export function createApp({ env, store }: CreateAppOptions) {
 
   app.get("/api/runs", async (c) => c.json({ runs: await store.listRuns() }));
 
+  app.get("/api/targets", async (c) => c.json({ targets: await store.listTargets() }));
+
+  app.post("/api/targets", async (c) => {
+    const body = await c.req
+      .json<{
+        challengeDate?: string;
+        distanceKm?: number;
+        diceValue?: number | null;
+        type?: "weekday" | "weekend" | "rest";
+        publishedBy?: string | null;
+      }>()
+      .catch(() => ({}));
+
+    const challengeDate = String(body.challengeDate || "").trim();
+    const distanceKm = Number(body.distanceKm);
+    const type = body.type;
+    const diceValue =
+      body.diceValue === null || body.diceValue === undefined
+        ? null
+        : Number(body.diceValue);
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(challengeDate)) {
+      return c.json({ error: "challengeDate must be YYYY-MM-DD" }, 400);
+    }
+    if (!Number.isFinite(distanceKm) || distanceKm < 0) {
+      return c.json({ error: "distanceKm must be a non-negative number" }, 400);
+    }
+    if (type !== "weekday" && type !== "weekend" && type !== "rest") {
+      return c.json({ error: "type must be weekday, weekend, or rest" }, 400);
+    }
+    if (
+      diceValue !== null &&
+      (![1, 2, 3, 4, 5, 6].includes(diceValue) || !Number.isInteger(diceValue))
+    ) {
+      return c.json({ error: "diceValue must be 1-6 or null" }, 400);
+    }
+
+    const session = await getValidSession(readSessionId(c));
+    const target = await store.upsertTarget({
+      challengeDate,
+      distanceKm,
+      diceValue,
+      type,
+      publishedBy: session ? athleteDisplayName(session.athlete) : body.publishedBy || null,
+    });
+
+    return c.json({ target }, 201);
+  });
+
   app.get("/api/leaderboard", async (c) =>
     c.json({ leaderboard: await store.buildLeaderboard() }),
   );

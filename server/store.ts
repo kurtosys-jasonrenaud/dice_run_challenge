@@ -1,4 +1,5 @@
 import type {
+  ChallengeTarget,
   LeaderboardEntry,
   RunStore,
   SessionRecord,
@@ -6,13 +7,58 @@ import type {
   StoreData,
 } from "./types.js";
 
-const emptyStore = (): StoreData => ({ sessions: [], runs: [], oauthStates: {} });
+const emptyStore = (): StoreData => ({
+  sessions: [],
+  runs: [],
+  targets: [],
+  oauthStates: {},
+});
 
 function newId(): string {
   return crypto.randomUUID();
 }
 
-function rankLeaderboard(runs: SharedRun[]): LeaderboardEntry[] {
+function normalizeStore(raw: StoreData): StoreData {
+  return {
+    sessions: Array.isArray(raw.sessions) ? raw.sessions : [],
+    runs: Array.isArray(raw.runs) ? raw.runs : [],
+    targets: Array.isArray(raw.targets) ? raw.targets : [],
+    oauthStates: raw.oauthStates || {},
+  };
+}
+
+/** Map an activity timestamp to the challenge day (Sunday counts as Saturday weekend). */
+export function activityToChallengeDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso.slice(0, 10);
+
+  const local = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes(),
+    date.getSeconds(),
+  );
+
+  // If the string looks like a local datetime without Z, Date may already be local.
+  // Prefer calendar date from the ISO prefix when present.
+  const prefix = iso.slice(0, 10);
+  const hasTimezone = /[zZ]|[+-]\d{2}:\d{2}$/.test(iso);
+  const daySource = hasTimezone ? local : new Date(`${prefix}T12:00:00`);
+
+  if (daySource.getDay() === 0) {
+    daySource.setDate(daySource.getDate() - 1);
+  }
+
+  const year = daySource.getFullYear();
+  const month = String(daySource.getMonth() + 1).padStart(2, "0");
+  const day = String(daySource.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function rankLeaderboard(runs: SharedRun[], targets: ChallengeTarget[]): LeaderboardEntry[] {
+  const targetByDate = new Map(targets.map((target) => [target.challengeDate, target]));
   const byAthlete = new Map<number, LeaderboardEntry>();
 
   for (const run of runs) {
@@ -23,6 +69,8 @@ function rankLeaderboard(runs: SharedRun[]): LeaderboardEntry[] {
       runCount: 0,
       totalDistanceKm: 0,
       lastRunAt: null as string | null,
+      daysMet: 0,
+      daysShort: 0,
     };
 
     current.runCount += 1;
@@ -30,23 +78,70 @@ function rankLeaderboard(runs: SharedRun[]): LeaderboardEntry[] {
     if (!current.lastRunAt || new Date(run.startDate) > new Date(current.lastRunAt)) {
       current.lastRunAt = run.startDate;
     }
+
+    const target = targetByDate.get(activityToChallengeDate(run.startDate));
+    if (target && target.distanceKm > 0) {
+      if (run.distanceKm + 0.05 >= target.distanceKm) current.daysMet = (current.daysMet || 0) + 1;
+      else current.daysShort = (current.daysShort || 0) + 1;
+    }
+
     byAthlete.set(run.athleteId, current);
   }
 
   return [...byAthlete.values()].sort((a, b) => {
+    const metDiff = (b.daysMet || 0) - (a.daysMet || 0);
+    if (metDiff !== 0) return metDiff;
     if (b.totalDistanceKm !== a.totalDistanceKm) return b.totalDistanceKm - a.totalDistanceKm;
     return b.runCount - a.runCount;
   });
 }
 
+function withTargetMethods(getData: () => StoreData, setData?: (data: StoreData) => void): Pick<
+  RunStore,
+  "listTargets" | "upsertTarget" | "buildLeaderboard"
+> {
+  return {
+    async listTargets() {
+      const data = getData();
+      return [...(data.targets || [])].sort((a, b) => b.challengeDate.localeCompare(a.challengeDate));
+    },
+    async upsertTarget(target) {
+      const data = getData();
+      data.targets = data.targets || [];
+      const next: ChallengeTarget = {
+        challengeDate: target.challengeDate,
+        distanceKm: target.distanceKm,
+        diceValue: target.diceValue,
+        type: target.type,
+        publishedAt: target.publishedAt || new Date().toISOString(),
+        publishedBy: target.publishedBy ?? null,
+      };
+      const index = data.targets.findIndex((item) => item.challengeDate === next.challengeDate);
+      if (index >= 0) data.targets[index] = next;
+      else data.targets.push(next);
+      setData?.(data);
+      return next;
+    },
+    async buildLeaderboard() {
+      const data = getData();
+      return rankLeaderboard(data.runs, data.targets || []);
+    },
+  };
+}
+
 export function createMemoryStore(initial?: StoreData): RunStore & { snapshot(): StoreData } {
-  const data: StoreData = initial
-    ? {
-        sessions: [...initial.sessions],
-        runs: [...initial.runs],
-        oauthStates: { ...(initial.oauthStates || {}) },
-      }
-    : emptyStore();
+  const data: StoreData = normalizeStore(
+    initial
+      ? {
+          sessions: [...initial.sessions],
+          runs: [...initial.runs],
+          targets: [...(initial.targets || [])],
+          oauthStates: { ...(initial.oauthStates || {}) },
+        }
+      : emptyStore(),
+  );
+
+  const targetMethods = withTargetMethods(() => data);
 
   return {
     snapshot: () => data,
@@ -103,9 +198,7 @@ export function createMemoryStore(initial?: StoreData): RunStore & { snapshot():
       data.runs.push(created);
       return { run: created, created: true };
     },
-    async buildLeaderboard() {
-      return rankLeaderboard(await this.listRuns());
-    },
+    ...targetMethods,
     async saveOAuthState(state) {
       data.oauthStates = data.oauthStates || {};
       data.oauthStates[state] = Date.now() + 10 * 60 * 1000;
@@ -125,12 +218,7 @@ export function createKvStore(kv: KVNamespace): RunStore {
   async function read(): Promise<StoreData> {
     const raw = await kv.get(KEY, "json");
     if (!raw || typeof raw !== "object") return emptyStore();
-    const parsed = raw as StoreData;
-    return {
-      sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
-      runs: Array.isArray(parsed.runs) ? parsed.runs : [],
-      oauthStates: parsed.oauthStates || {},
-    };
+    return normalizeStore(raw as StoreData);
   }
 
   async function write(data: StoreData): Promise<void> {
@@ -202,8 +290,30 @@ export function createKvStore(kv: KVNamespace): RunStore {
       await write(data);
       return { run: created, created: true };
     },
+    async listTargets() {
+      const data = await read();
+      return [...(data.targets || [])].sort((a, b) => b.challengeDate.localeCompare(a.challengeDate));
+    },
+    async upsertTarget(target) {
+      const data = await read();
+      data.targets = data.targets || [];
+      const next: ChallengeTarget = {
+        challengeDate: target.challengeDate,
+        distanceKm: target.distanceKm,
+        diceValue: target.diceValue,
+        type: target.type,
+        publishedAt: target.publishedAt || new Date().toISOString(),
+        publishedBy: target.publishedBy ?? null,
+      };
+      const index = data.targets.findIndex((item) => item.challengeDate === next.challengeDate);
+      if (index >= 0) data.targets[index] = next;
+      else data.targets.push(next);
+      await write(data);
+      return next;
+    },
     async buildLeaderboard() {
-      return rankLeaderboard(await this.listRuns());
+      const data = await read();
+      return rankLeaderboard(data.runs, data.targets || []);
     },
     async saveOAuthState(state) {
       const data = await read();

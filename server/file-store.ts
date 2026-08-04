@@ -12,7 +12,7 @@ async function readFileStore(): Promise<StoreData> {
     const raw = await readFile(DATA_PATH, "utf8");
     return JSON.parse(raw) as StoreData;
   } catch {
-    return { sessions: [], runs: [], oauthStates: {} };
+    return { sessions: [], runs: [], targets: [], oauthStates: {} };
   }
 }
 
@@ -48,6 +48,12 @@ export async function createFileStore(): Promise<RunStore> {
     listRuns: () => memory.listRuns(),
     async upsertRun(run) {
       const result = await memory.upsertRun(run);
+      await persist();
+      return result;
+    },
+    listTargets: () => memory.listTargets(),
+    async upsertTarget(target) {
+      const result = await memory.upsertTarget(target);
       await persist();
       return result;
     },

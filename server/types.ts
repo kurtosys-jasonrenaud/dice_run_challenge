@@ -36,9 +36,19 @@ export interface SharedRun {
   submittedAt: string;
 }
 
+export interface ChallengeTarget {
+  challengeDate: string;
+  distanceKm: number;
+  diceValue: number | null;
+  type: "weekday" | "weekend" | "rest";
+  publishedAt: string;
+  publishedBy?: string | null;
+}
+
 export interface StoreData {
   sessions: SessionRecord[];
   runs: SharedRun[];
+  targets?: ChallengeTarget[];
   oauthStates?: Record<string, number>;
 }
 
@@ -49,6 +59,8 @@ export interface LeaderboardEntry {
   runCount: number;
   totalDistanceKm: number;
   lastRunAt: string | null;
+  daysMet?: number;
+  daysShort?: number;
 }
 
 export interface StravaActivitySummary {
@@ -81,6 +93,10 @@ export interface RunStore {
   upsertRun(
     run: Omit<SharedRun, "id" | "submittedAt"> & { id?: string },
   ): Promise<{ run: SharedRun; created: boolean }>;
+  listTargets(): Promise<ChallengeTarget[]>;
+  upsertTarget(
+    target: Omit<ChallengeTarget, "publishedAt"> & { publishedAt?: string },
+  ): Promise<ChallengeTarget>;
   buildLeaderboard(): Promise<LeaderboardEntry[]>;
   saveOAuthState(state: string): Promise<void>;
   consumeOAuthState(state: string): Promise<boolean>;

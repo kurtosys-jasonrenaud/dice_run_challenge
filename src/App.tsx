@@ -19,6 +19,7 @@ import {
   WEEKDAY_DISTANCES,
   WEEKEND_DISTANCES,
 } from "./lib/challenge";
+import { publishTarget } from "./lib/stravaApi";
 import type { Theme } from "./types/challenge";
 
 function initialTheme(): Theme {
@@ -186,7 +187,19 @@ export default function App() {
             <DiceRoller
               hasRolled={challenge.hasRolledFor(today)}
               existingRoll={existingRoll}
-              onSave={(value, distance) => challenge.rollForDate(today, value, distance)}
+              onSave={(value, distance) => {
+                const roll = challenge.rollForDate(today, value, distance);
+                if (!roll) return;
+                void publishTarget({
+                  challengeDate: roll.challengeDate,
+                  distanceKm: roll.distanceKm,
+                  diceValue: roll.diceValue,
+                  type: roll.type,
+                  publishedBy: "Office dice",
+                }).catch(() => {
+                  // Local roll still saved if the shared target publish fails.
+                });
+              }}
             />
           </div>
         </Reveal>

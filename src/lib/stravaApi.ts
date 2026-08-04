@@ -38,6 +38,8 @@ export interface LeaderboardEntry {
   runCount: number;
   totalDistanceKm: number;
   lastRunAt: string | null;
+  daysMet?: number;
+  daysShort?: number;
 }
 
 const SESSION_KEY = "roll-and-run:strava-session";
@@ -156,6 +158,65 @@ export function fetchRuns() {
 
 export function fetchLeaderboard() {
   return api<{ leaderboard: LeaderboardEntry[] }>("/api/leaderboard");
+}
+
+export interface ChallengeTarget {
+  challengeDate: string;
+  distanceKm: number;
+  diceValue: number | null;
+  type: "weekday" | "weekend" | "rest";
+  publishedAt: string;
+  publishedBy?: string | null;
+}
+
+export type TargetStatus = "met" | "short" | "rest" | "no-target";
+
+/** Sunday activities count toward the Saturday weekend challenge. */
+export function activityToChallengeDate(iso: string): string {
+  const prefix = iso.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(prefix)) return prefix;
+
+  const date = new Date(`${prefix}T12:00:00`);
+  if (date.getDay() === 0) date.setDate(date.getDate() - 1);
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function evaluateTarget(
+  distanceKm: number,
+  target: ChallengeTarget | undefined,
+): { status: TargetStatus; label: string } {
+  if (!target) return { status: "no-target", label: "No target set" };
+  if (target.distanceKm <= 0 || target.type === "rest") {
+    return { status: "rest", label: "Rest day" };
+  }
+  if (distanceKm + 0.05 >= target.distanceKm) {
+    return { status: "met", label: `Met ${target.distanceKm} km` };
+  }
+  return {
+    status: "short",
+    label: `Short ${distanceKm.toFixed(2)} / ${target.distanceKm} km`,
+  };
+}
+
+export function fetchTargets() {
+  return api<{ targets: ChallengeTarget[] }>("/api/targets");
+}
+
+export function publishTarget(input: {
+  challengeDate: string;
+  distanceKm: number;
+  diceValue: number | null;
+  type: "weekday" | "weekend" | "rest";
+  publishedBy?: string | null;
+}) {
+  return api<{ target: ChallengeTarget }>("/api/targets", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export function formatMovingTime(totalSeconds: number): string {
