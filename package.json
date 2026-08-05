@@ -24,7 +24,7 @@
     "react": "latest",
     "react-dom": "latest",
     "tailwind-merge": "latest",
-    "tailwindcss": "4.1.14"
+    "tailwindcss": "4.3.3"
   },
   "devDependencies": {
     "@eslint/js": "latest",
