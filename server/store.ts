@@ -1,6 +1,8 @@
 import type {
   ChallengeTarget,
+  ExchangeCodeRecord,
   LeaderboardEntry,
+  OAuthStateRecord,
   RunStore,
   SessionRecord,
   SharedRun,
@@ -12,10 +14,23 @@ const emptyStore = (): StoreData => ({
   runs: [],
   targets: [],
   oauthStates: {},
+  exchangeCodes: {},
 });
 
 function newId(): string {
   return crypto.randomUUID();
+}
+
+function normalizeOAuthStates(
+  raw: StoreData["oauthStates"],
+): Record<string, number | OAuthStateRecord> {
+  return raw && typeof raw === "object" ? { ...raw } : {};
+}
+
+function normalizeExchangeCodes(
+  raw: StoreData["exchangeCodes"],
+): Record<string, ExchangeCodeRecord> {
+  return raw && typeof raw === "object" ? { ...raw } : {};
 }
 
 function normalizeStore(raw: StoreData): StoreData {
@@ -23,7 +38,8 @@ function normalizeStore(raw: StoreData): StoreData {
     sessions: Array.isArray(raw.sessions) ? raw.sessions : [],
     runs: Array.isArray(raw.runs) ? raw.runs : [],
     targets: Array.isArray(raw.targets) ? raw.targets : [],
-    oauthStates: raw.oauthStates || {},
+    oauthStates: normalizeOAuthStates(raw.oauthStates),
+    exchangeCodes: normalizeExchangeCodes(raw.exchangeCodes),
   };
 }
 
@@ -41,8 +57,6 @@ export function activityToChallengeDate(iso: string): string {
     date.getSeconds(),
   );
 
-  // If the string looks like a local datetime without Z, Date may already be local.
-  // Prefer calendar date from the ISO prefix when present.
   const prefix = iso.slice(0, 10);
   const hasTimezone = /[zZ]|[+-]\d{2}:\d{2}$/.test(iso);
   const daySource = hasTimezone ? local : new Date(`${prefix}T12:00:00`);
@@ -96,37 +110,20 @@ function rankLeaderboard(runs: SharedRun[], targets: ChallengeTarget[]): Leaderb
   });
 }
 
-function withTargetMethods(getData: () => StoreData, setData?: (data: StoreData) => void): Pick<
-  RunStore,
-  "listTargets" | "upsertTarget" | "buildLeaderboard"
-> {
-  return {
-    async listTargets() {
-      const data = getData();
-      return [...(data.targets || [])].sort((a, b) => b.challengeDate.localeCompare(a.challengeDate));
-    },
-    async upsertTarget(target) {
-      const data = getData();
-      data.targets = data.targets || [];
-      const next: ChallengeTarget = {
-        challengeDate: target.challengeDate,
-        distanceKm: target.distanceKm,
-        diceValue: target.diceValue,
-        type: target.type,
-        publishedAt: target.publishedAt || new Date().toISOString(),
-        publishedBy: target.publishedBy ?? null,
-      };
-      const index = data.targets.findIndex((item) => item.challengeDate === next.challengeDate);
-      if (index >= 0) data.targets[index] = next;
-      else data.targets.push(next);
-      setData?.(data);
-      return next;
-    },
-    async buildLeaderboard() {
-      const data = getData();
-      return rankLeaderboard(data.runs, data.targets || []);
-    },
-  };
+function readOAuthRecord(
+  value: number | OAuthStateRecord | undefined,
+): OAuthStateRecord | null {
+  if (!value) return null;
+  if (typeof value === "number") {
+    return { expiresAt: value, codeVerifier: "" };
+  }
+  if (typeof value === "object" && typeof value.expiresAt === "number") {
+    return {
+      expiresAt: value.expiresAt,
+      codeVerifier: typeof value.codeVerifier === "string" ? value.codeVerifier : "",
+    };
+  }
+  return null;
 }
 
 export function createMemoryStore(initial?: StoreData): RunStore & { snapshot(): StoreData } {
@@ -137,11 +134,10 @@ export function createMemoryStore(initial?: StoreData): RunStore & { snapshot():
           runs: [...initial.runs],
           targets: [...(initial.targets || [])],
           oauthStates: { ...(initial.oauthStates || {}) },
+          exchangeCodes: { ...(initial.exchangeCodes || {}) },
         }
       : emptyStore(),
   );
-
-  const targetMethods = withTargetMethods(() => data);
 
   return {
     snapshot: () => data,
@@ -161,6 +157,12 @@ export function createMemoryStore(initial?: StoreData): RunStore & { snapshot():
     async getSession(sessionId) {
       if (!sessionId) return null;
       return data.sessions.find((session) => session.id === sessionId) ?? null;
+    },
+    async touchSession(sessionId) {
+      const session = data.sessions.find((item) => item.id === sessionId);
+      if (!session) return null;
+      session.updatedAt = new Date().toISOString();
+      return session;
     },
     async updateSessionTokens(sessionId, tokens) {
       const session = data.sessions.find((item) => item.id === sessionId);
@@ -198,16 +200,58 @@ export function createMemoryStore(initial?: StoreData): RunStore & { snapshot():
       data.runs.push(created);
       return { run: created, created: true };
     },
-    ...targetMethods,
-    async saveOAuthState(state) {
+    async listTargets() {
+      return [...(data.targets || [])].sort((a, b) =>
+        b.challengeDate.localeCompare(a.challengeDate),
+      );
+    },
+    async upsertTarget(target) {
+      data.targets = data.targets || [];
+      const next: ChallengeTarget = {
+        challengeDate: target.challengeDate,
+        distanceKm: target.distanceKm,
+        diceValue: target.diceValue,
+        type: target.type,
+        publishedAt: target.publishedAt || new Date().toISOString(),
+        publishedBy: target.publishedBy ?? null,
+      };
+      const index = data.targets.findIndex((item) => item.challengeDate === next.challengeDate);
+      if (index >= 0) data.targets[index] = next;
+      else data.targets.push(next);
+      return next;
+    },
+    async buildLeaderboard() {
+      return rankLeaderboard(data.runs, data.targets || []);
+    },
+    async saveOAuthState(state, codeVerifier) {
       data.oauthStates = data.oauthStates || {};
-      data.oauthStates[state] = Date.now() + 10 * 60 * 1000;
+      data.oauthStates[state] = {
+        expiresAt: Date.now() + 10 * 60 * 1000,
+        codeVerifier,
+      };
     },
     async consumeOAuthState(state) {
       data.oauthStates = data.oauthStates || {};
-      const expiresAt = data.oauthStates[state];
+      const record = readOAuthRecord(data.oauthStates[state]);
       delete data.oauthStates[state];
-      return Boolean(expiresAt && expiresAt >= Date.now());
+      if (!record || record.expiresAt < Date.now()) {
+        return { ok: false, codeVerifier: null };
+      }
+      return { ok: true, codeVerifier: record.codeVerifier || null };
+    },
+    async saveExchangeCode(code, sessionId) {
+      data.exchangeCodes = data.exchangeCodes || {};
+      data.exchangeCodes[code] = {
+        sessionId,
+        expiresAt: Date.now() + 2 * 60 * 1000,
+      };
+    },
+    async consumeExchangeCode(code) {
+      data.exchangeCodes = data.exchangeCodes || {};
+      const record = data.exchangeCodes[code];
+      delete data.exchangeCodes[code];
+      if (!record || record.expiresAt < Date.now()) return null;
+      return record.sessionId;
     },
   };
 }
@@ -245,6 +289,14 @@ export function createKvStore(kv: KVNamespace): RunStore {
       if (!sessionId) return null;
       const data = await read();
       return data.sessions.find((session) => session.id === sessionId) ?? null;
+    },
+    async touchSession(sessionId) {
+      const data = await read();
+      const session = data.sessions.find((item) => item.id === sessionId);
+      if (!session) return null;
+      session.updatedAt = new Date().toISOString();
+      await write(data);
+      return session;
     },
     async updateSessionTokens(sessionId, tokens) {
       const data = await read();
@@ -292,7 +344,9 @@ export function createKvStore(kv: KVNamespace): RunStore {
     },
     async listTargets() {
       const data = await read();
-      return [...(data.targets || [])].sort((a, b) => b.challengeDate.localeCompare(a.challengeDate));
+      return [...(data.targets || [])].sort((a, b) =>
+        b.challengeDate.localeCompare(a.challengeDate),
+      );
     },
     async upsertTarget(target) {
       const data = await read();
@@ -315,19 +369,43 @@ export function createKvStore(kv: KVNamespace): RunStore {
       const data = await read();
       return rankLeaderboard(data.runs, data.targets || []);
     },
-    async saveOAuthState(state) {
+    async saveOAuthState(state, codeVerifier) {
       const data = await read();
       data.oauthStates = data.oauthStates || {};
-      data.oauthStates[state] = Date.now() + 10 * 60 * 1000;
+      data.oauthStates[state] = {
+        expiresAt: Date.now() + 10 * 60 * 1000,
+        codeVerifier,
+      };
       await write(data);
     },
     async consumeOAuthState(state) {
       const data = await read();
       data.oauthStates = data.oauthStates || {};
-      const expiresAt = data.oauthStates[state];
+      const record = readOAuthRecord(data.oauthStates[state]);
       delete data.oauthStates[state];
       await write(data);
-      return Boolean(expiresAt && expiresAt >= Date.now());
+      if (!record || record.expiresAt < Date.now()) {
+        return { ok: false, codeVerifier: null };
+      }
+      return { ok: true, codeVerifier: record.codeVerifier || null };
+    },
+    async saveExchangeCode(code, sessionId) {
+      const data = await read();
+      data.exchangeCodes = data.exchangeCodes || {};
+      data.exchangeCodes[code] = {
+        sessionId,
+        expiresAt: Date.now() + 2 * 60 * 1000,
+      };
+      await write(data);
+    },
+    async consumeExchangeCode(code) {
+      const data = await read();
+      data.exchangeCodes = data.exchangeCodes || {};
+      const record = data.exchangeCodes[code];
+      delete data.exchangeCodes[code];
+      await write(data);
+      if (!record || record.expiresAt < Date.now()) return null;
+      return record.sessionId;
     },
   };
 }

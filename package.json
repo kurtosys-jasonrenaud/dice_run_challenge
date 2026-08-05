@@ -10,10 +10,11 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "cf:kv": "wrangler kv namespace create dice-run-store",
-    "cf:secret": "wrangler secret put STRAVA_CLIENT_ID && wrangler secret put STRAVA_CLIENT_SECRET",
+    "cf:secret": "wrangler secret put STRAVA_CLIENT_ID && wrangler secret put STRAVA_CLIENT_SECRET && wrangler secret put OFFICE_PUBLISH_TOKEN",
     "cf:deploy": "wrangler deploy"
   },
   "dependencies": {
+    "@fontsource/plus-jakarta-sans": "^5.3.0",
     "@hono/node-server": "^1.19.6",
     "@tailwindcss/vite": "4.1.14",
     "class-variance-authority": "latest",

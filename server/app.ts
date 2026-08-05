@@ -1,6 +1,16 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import {
+  applySecurityHeaders,
+  clientKey,
+  clientSafeError,
+  createCodeChallenge,
+  createCodeVerifier,
+  MAX_JSON_BYTES,
+  rateLimit,
+  sessionWithinLimits,
+} from "./security.js";
+import {
   athleteDisplayName,
   buildAuthorizeUrl,
   exchangeCode,
@@ -29,7 +39,9 @@ function allowedOrigins(env: StravaEnvConfig): string[] {
   return [...new Set([...defaults, ...configured])];
 }
 
-function readSessionId(c: { req: { header: (name: string) => string | undefined } }): string | undefined {
+function readSessionId(c: {
+  req: { header: (name: string) => string | undefined };
+}): string | undefined {
   const header = c.req.header("authorization") || c.req.header("Authorization");
   if (!header) return undefined;
   const match = header.match(/^Bearer\s+(.+)$/i);
@@ -44,21 +56,49 @@ function buildAppRedirect(appOrigin: string, params: Record<string, string>): st
   return url.toString();
 }
 
+function enforceRateLimit(
+  c: { req: { raw: Request; path: string }; header: (name: string, value: string) => void },
+  limit: number,
+  windowMs: number,
+) {
+  const key = `${clientKey(c.req.raw)}:${c.req.path}`;
+  const result = rateLimit(key, limit, windowMs);
+  if (!result.allowed) {
+    c.header("Retry-After", String(result.retryAfterSec));
+    return false;
+  }
+  return true;
+}
+
 export function createApp({ env, store }: CreateAppOptions) {
   const app = new Hono();
   const origins = allowedOrigins(env);
+  const officePublishToken = env.OFFICE_PUBLISH_TOKEN?.trim() || "";
+
+  app.use("*", async (c, next) => {
+    await next();
+    applySecurityHeaders(c.res.headers);
+  });
 
   app.use(
     "*",
     cors({
       origin: (origin) => {
-        if (!origin) return origins[0];
+        if (!origin) return "";
         return origins.includes(origin) ? origin : "";
       },
-      allowHeaders: ["Content-Type", "Authorization"],
+      allowHeaders: ["Content-Type", "Authorization", "X-Office-Publish-Token"],
       allowMethods: ["GET", "POST", "OPTIONS"],
+      maxAge: 600,
     }),
   );
+
+  app.use("/api/*", async (c, next) => {
+    if (!enforceRateLimit(c, 180, 60_000)) {
+      return c.json({ error: "Too many requests" }, 429);
+    }
+    return next();
+  });
 
   app.get("/api/health", (c) =>
     c.json({
@@ -74,9 +114,15 @@ export function createApp({ env, store }: CreateAppOptions) {
     const session = await store.getSession(sessionId);
     if (!session) return null;
 
+    if (!sessionWithinLimits(session.createdAt, session.updatedAt)) {
+      await store.deleteSession(session.id);
+      return null;
+    }
+
     const skewSeconds = 60;
     const now = Math.floor(Date.now() / 1000);
     if (session.tokens.expiresAt > now + skewSeconds) {
+      await store.touchSession(session.id);
       return session;
     }
 
@@ -90,18 +136,19 @@ export function createApp({ env, store }: CreateAppOptions) {
   }
 
   app.get("/api/auth/strava", async (c) => {
+    if (!enforceRateLimit(c, 12, 60_000)) {
+      return c.json({ error: "Too many requests" }, 429);
+    }
+
     try {
       getStravaConfig(env);
       const state = crypto.randomUUID();
-      await store.saveOAuthState(state);
-      return c.redirect(buildAuthorizeUrl(env, state), 302);
-    } catch (error) {
-      return c.json(
-        {
-          error: error instanceof Error ? error.message : "Strava is not configured",
-        },
-        500,
-      );
+      const codeVerifier = createCodeVerifier();
+      const codeChallenge = await createCodeChallenge(codeVerifier);
+      await store.saveOAuthState(state, codeVerifier);
+      return c.redirect(buildAuthorizeUrl(env, state, codeChallenge), 302);
+    } catch {
+      return c.json({ error: "Strava is not configured" }, 500);
     }
   });
 
@@ -113,11 +160,13 @@ export function createApp({ env, store }: CreateAppOptions) {
     const { appOrigin } = getStravaConfig(env);
 
     if (error) {
-      return c.redirect(buildAppRedirect(appOrigin, { strava_error: error }), 302);
+      return c.redirect(buildAppRedirect(appOrigin, { strava_error: "access_denied" }), 302);
     }
 
-    const stateOk = state ? await store.consumeOAuthState(state) : false;
-    if (!code || !state || !stateOk) {
+    const stateResult = state
+      ? await store.consumeOAuthState(state)
+      : { ok: false, codeVerifier: null };
+    if (!code || !state || !stateResult.ok || !stateResult.codeVerifier) {
       return c.redirect(buildAppRedirect(appOrigin, { strava_error: "invalid_state" }), 302);
     }
 
@@ -129,23 +178,41 @@ export function createApp({ env, store }: CreateAppOptions) {
     }
 
     try {
-      const { athlete, tokens } = await exchangeCode(env, code);
+      const { athlete, tokens } = await exchangeCode(env, code, stateResult.codeVerifier);
       const session = await store.createSession(athlete, tokens);
+      const exchange = crypto.randomUUID();
+      await store.saveExchangeCode(exchange, session.id);
       return c.redirect(
         buildAppRedirect(appOrigin, {
           strava: "connected",
-          session: session.id,
+          exchange,
         }),
         302,
       );
-    } catch (err) {
+    } catch {
       return c.redirect(
-        buildAppRedirect(appOrigin, {
-          strava_error: err instanceof Error ? err.message : "token_exchange_failed",
-        }),
+        buildAppRedirect(appOrigin, { strava_error: "token_exchange_failed" }),
         302,
       );
     }
+  });
+
+  app.post("/api/auth/session", async (c) => {
+    if (!enforceRateLimit(c, 20, 60_000)) {
+      return c.json({ error: "Too many requests" }, 429);
+    }
+
+    const body = await c.req.json<{ exchange?: string }>().catch(() => ({}));
+    const exchange = String(body.exchange || "").trim();
+    if (!exchange) return c.json({ error: "exchange is required" }, 400);
+
+    const sessionId = await store.consumeExchangeCode(exchange);
+    if (!sessionId) return c.json({ error: "Invalid or expired exchange code" }, 400);
+
+    const session = await getValidSession(sessionId);
+    if (!session) return c.json({ error: "Session unavailable" }, 401);
+
+    return c.json({ session: session.id });
   });
 
   app.get("/api/auth/me", async (c) => {
@@ -188,15 +255,24 @@ export function createApp({ env, store }: CreateAppOptions) {
       });
     } catch (error) {
       return c.json(
-        { error: error instanceof Error ? error.message : "Failed to load activities" },
+        { error: clientSafeError(error, "Failed to load activities") },
         502,
       );
     }
   });
 
   app.post("/api/runs", async (c) => {
+    if (!enforceRateLimit(c, 20, 60_000)) {
+      return c.json({ error: "Too many requests" }, 429);
+    }
+
     const session = await getValidSession(readSessionId(c));
     if (!session) return c.json({ error: "Not authenticated" }, 401);
+
+    const contentLength = Number(c.req.header("content-length") || 0);
+    if (contentLength > MAX_JSON_BYTES) {
+      return c.json({ error: "Request too large" }, 413);
+    }
 
     const body = await c.req.json<{ activityId?: number }>().catch(() => ({}));
     const activityId = Number(body.activityId);
@@ -222,7 +298,7 @@ export function createApp({ env, store }: CreateAppOptions) {
       return c.json({ run: result.run, created: result.created }, result.created ? 201 : 200);
     } catch (error) {
       return c.json(
-        { error: error instanceof Error ? error.message : "Failed to submit run" },
+        { error: clientSafeError(error, "Failed to submit run") },
         502,
       );
     }
@@ -233,6 +309,36 @@ export function createApp({ env, store }: CreateAppOptions) {
   app.get("/api/targets", async (c) => c.json({ targets: await store.listTargets() }));
 
   app.post("/api/targets", async (c) => {
+    if (!enforceRateLimit(c, 10, 60_000)) {
+      return c.json({ error: "Too many requests" }, 429);
+    }
+
+    const contentLength = Number(c.req.header("content-length") || 0);
+    if (contentLength > MAX_JSON_BYTES) {
+      return c.json({ error: "Request too large" }, 413);
+    }
+
+    const session = await getValidSession(readSessionId(c));
+    const providedOfficeToken = (
+      c.req.header("X-Office-Publish-Token") ||
+      c.req.header("x-office-publish-token") ||
+      ""
+    ).trim();
+    const officeAuthorized =
+      Boolean(officePublishToken) &&
+      Boolean(providedOfficeToken) &&
+      providedOfficeToken === officePublishToken;
+    const origin = c.req.header("Origin") || "";
+    const originAllowed = Boolean(origin) && origins.includes(origin);
+
+    // Prefer Strava session or office publish token. If the token is not configured yet,
+    // allow only browser requests from the approved CORS origin (rate-limited above).
+    if (!session && !officeAuthorized) {
+      if (officePublishToken || !originAllowed) {
+        return c.json({ error: "Authentication required to publish targets" }, 401);
+      }
+    }
+
     const body = await c.req
       .json<{
         challengeDate?: string;
@@ -267,13 +373,14 @@ export function createApp({ env, store }: CreateAppOptions) {
       return c.json({ error: "diceValue must be 1-6 or null" }, 400);
     }
 
-    const session = await getValidSession(readSessionId(c));
     const target = await store.upsertTarget({
       challengeDate,
       distanceKm,
       diceValue,
       type,
-      publishedBy: session ? athleteDisplayName(session.athlete) : body.publishedBy || null,
+      publishedBy: session
+        ? athleteDisplayName(session.athlete)
+        : body.publishedBy || "Office dice",
     });
 
     return c.json({ target }, 201);

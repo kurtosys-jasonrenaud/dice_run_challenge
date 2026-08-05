@@ -35,6 +35,7 @@ const env: StravaEnvConfig = {
     process.env.STRAVA_REDIRECT_URI || "http://localhost:5173/api/auth/callback",
   APP_ORIGIN: process.env.APP_ORIGIN || "http://localhost:5173/dice_run_challenge/",
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || "",
+  OFFICE_PUBLISH_TOKEN: process.env.OFFICE_PUBLISH_TOKEN || "",
 };
 
 const PORT = Number(process.env.API_PORT || 8787);

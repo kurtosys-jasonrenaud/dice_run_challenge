@@ -4,6 +4,7 @@ import { ChallengeStrip } from "./components/ChallengeStrip";
 import { Dashboard } from "./components/Dashboard";
 import { DiceRoller } from "./components/DiceRoller";
 import { Reveal } from "./components/Reveal";
+import { SecurityPage } from "./components/SecurityPage";
 import { ShareBrief } from "./components/ShareBrief";
 import { StravaBoard } from "./components/StravaBoard";
 import { Button, Card } from "./components/ui/primitives";
@@ -26,6 +27,10 @@ function initialTheme(): Theme {
   const stored = localStorage.getItem("roll-and-run:theme");
   if (stored === "light" || stored === "dark") return stored;
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function currentHashRoute(): string {
+  return window.location.hash.replace(/^#/, "").split("?")[0] || "top";
 }
 
 function RuleGrid() {
@@ -92,12 +97,23 @@ function RuleGrid() {
 export default function App() {
   const month = getChallengeMonth();
   const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [route, setRoute] = useState(currentHashRoute);
   const challenge = useChallenge(month);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("roll-and-run:theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    const onHashChange = () => setRoute(currentHashRoute());
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  if (route === "security") {
+    return <SecurityPage />;
+  }
 
   const today = new Date();
   const todayChallengeIso = getChallengeDate(today);
@@ -220,7 +236,12 @@ export default function App() {
             <span className="h-5 w-px bg-white/25" />
             <p className="font-bold text-white">Roll &amp; Run · {CHALLENGE_LABEL}</p>
           </div>
-          <p>Run, jog, or walk. Rejoin whenever you can.</p>
+          <div className="flex flex-wrap items-center gap-4">
+            <a className="font-semibold text-signal hover:underline" href="#security">
+              Security &amp; standards
+            </a>
+            <p>Run, jog, or walk. Rejoin whenever you can.</p>
+          </div>
         </div>
       </footer>
     </div>

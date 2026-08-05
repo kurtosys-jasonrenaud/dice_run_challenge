@@ -12,7 +12,7 @@ async function readFileStore(): Promise<StoreData> {
     const raw = await readFile(DATA_PATH, "utf8");
     return JSON.parse(raw) as StoreData;
   } catch {
-    return { sessions: [], runs: [], targets: [], oauthStates: {} };
+    return { sessions: [], runs: [], targets: [], oauthStates: {}, exchangeCodes: {} };
   }
 }
 
@@ -36,6 +36,11 @@ export async function createFileStore(): Promise<RunStore> {
       return session;
     },
     getSession: (sessionId) => memory.getSession(sessionId),
+    async touchSession(sessionId) {
+      const session = await memory.touchSession(sessionId);
+      await persist();
+      return session;
+    },
     async updateSessionTokens(sessionId, tokens) {
       const session = await memory.updateSessionTokens(sessionId, tokens);
       await persist();
@@ -58,14 +63,23 @@ export async function createFileStore(): Promise<RunStore> {
       return result;
     },
     buildLeaderboard: () => memory.buildLeaderboard(),
-    async saveOAuthState(state) {
-      await memory.saveOAuthState(state);
+    async saveOAuthState(state, codeVerifier) {
+      await memory.saveOAuthState(state, codeVerifier);
       await persist();
     },
     async consumeOAuthState(state) {
-      const ok = await memory.consumeOAuthState(state);
+      const result = await memory.consumeOAuthState(state);
       await persist();
-      return ok;
+      return result;
+    },
+    async saveExchangeCode(code, sessionId) {
+      await memory.saveExchangeCode(code, sessionId);
+      await persist();
+    },
+    async consumeExchangeCode(code) {
+      const sessionId = await memory.consumeExchangeCode(code);
+      await persist();
+      return sessionId;
     },
   };
 }

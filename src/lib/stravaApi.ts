@@ -50,6 +50,10 @@ function apiBase(): string {
   return "";
 }
 
+function officePublishToken(): string {
+  return import.meta.env.VITE_OFFICE_PUBLISH_TOKEN?.trim() || "";
+}
+
 export function getSessionToken(): string | null {
   return localStorage.getItem(SESSION_KEY);
 }
@@ -64,7 +68,12 @@ export function setSessionToken(token: string | null) {
 
 function oauthParamsFromLocation(): URLSearchParams {
   const fromSearch = new URLSearchParams(window.location.search);
-  if (fromSearch.has("session") || fromSearch.has("strava") || fromSearch.has("strava_error")) {
+  if (
+    fromSearch.has("session") ||
+    fromSearch.has("exchange") ||
+    fromSearch.has("strava") ||
+    fromSearch.has("strava_error")
+  ) {
     return fromSearch;
   }
 
@@ -77,10 +86,30 @@ function oauthParamsFromLocation(): URLSearchParams {
   return new URLSearchParams();
 }
 
-/** Must run before the app strips the OAuth result from the URL. */
-export function captureSessionFromUrl() {
-  const session = oauthParamsFromLocation().get("session");
-  if (session) setSessionToken(session);
+/**
+ * Exchange a one-time OAuth code for a session id, or accept a legacy session
+ * param from older redirects. Must run before React mounts.
+ */
+export async function captureSessionFromUrl() {
+  const params = oauthParamsFromLocation();
+  const legacySession = params.get("session");
+  if (legacySession) {
+    setSessionToken(legacySession);
+    return;
+  }
+
+  const exchange = params.get("exchange");
+  if (!exchange) return;
+
+  try {
+    const payload = await api<{ session: string }>("/api/auth/session", {
+      method: "POST",
+      body: JSON.stringify({ exchange }),
+    });
+    if (payload.session) setSessionToken(payload.session);
+  } catch {
+    // Leave unauthenticated; UI shows reconnect prompt.
+  }
 }
 
 export function readOAuthFeedback(): { connected: boolean; error: string | null } {
@@ -213,8 +242,13 @@ export function publishTarget(input: {
   type: "weekday" | "weekend" | "rest";
   publishedBy?: string | null;
 }) {
+  const headers: HeadersInit = {};
+  const officeToken = officePublishToken();
+  if (officeToken) headers["X-Office-Publish-Token"] = officeToken;
+
   return api<{ target: ChallengeTarget }>("/api/targets", {
     method: "POST",
+    headers,
     body: JSON.stringify(input),
   });
 }

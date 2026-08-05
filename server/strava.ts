@@ -21,7 +21,11 @@ export function getStravaConfig(env: StravaEnvConfig) {
   };
 }
 
-export function buildAuthorizeUrl(env: StravaEnvConfig, state: string): string {
+export function buildAuthorizeUrl(
+  env: StravaEnvConfig,
+  state: string,
+  codeChallenge: string,
+): string {
   const { clientId, redirectUri, scopes } = getStravaConfig(env);
   const params = new URLSearchParams({
     client_id: clientId,
@@ -30,6 +34,8 @@ export function buildAuthorizeUrl(env: StravaEnvConfig, state: string): string {
     approval_prompt: "auto",
     scope: scopes,
     state,
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256",
   });
   return `${STRAVA_AUTH}?${params.toString()}`;
 }
@@ -59,6 +65,7 @@ function toTokens(payload: TokenResponse): StravaTokens {
 export async function exchangeCode(
   env: StravaEnvConfig,
   code: string,
+  codeVerifier: string,
 ): Promise<{ tokens: StravaTokens; athlete: AthleteProfile }> {
   const { clientId, clientSecret } = getStravaConfig(env);
   const body = new URLSearchParams({
@@ -66,6 +73,7 @@ export async function exchangeCode(
     client_secret: clientSecret,
     code,
     grant_type: "authorization_code",
+    code_verifier: codeVerifier,
   });
 
   const response = await fetch(STRAVA_TOKEN, {
@@ -75,8 +83,7 @@ export async function exchangeCode(
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Strava token exchange failed: ${response.status} ${text}`);
+    throw new Error("Strava token exchange failed");
   }
 
   const payload = (await response.json()) as TokenResponse;
@@ -116,8 +123,7 @@ export async function refreshTokens(
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Strava token refresh failed: ${response.status} ${text}`);
+    throw new Error("Strava token refresh failed");
   }
 
   const payload = (await response.json()) as TokenResponse;
@@ -138,8 +144,7 @@ export async function listAthleteActivities(
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Strava activities failed: ${response.status} ${text}`);
+    throw new Error("Failed to load Strava activities");
   }
 
   return (await response.json()) as StravaActivitySummary[];
@@ -154,8 +159,7 @@ export async function getAthleteActivity(
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Strava activity lookup failed: ${response.status} ${text}`);
+    throw new Error("Failed to load Strava activity");
   }
 
   return (await response.json()) as StravaActivitySummary;

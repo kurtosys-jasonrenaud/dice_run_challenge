@@ -4,6 +4,7 @@ import type { StravaEnvConfig } from "./types";
 
 export interface WorkerEnv extends StravaEnvConfig {
   STORE: KVNamespace;
+  OFFICE_PUBLISH_TOKEN?: string;
 }
 
 const worker = {
@@ -15,6 +16,7 @@ const worker = {
         STRAVA_REDIRECT_URI: env.STRAVA_REDIRECT_URI,
         APP_ORIGIN: env.APP_ORIGIN,
         ALLOWED_ORIGINS: env.ALLOWED_ORIGINS,
+        OFFICE_PUBLISH_TOKEN: env.OFFICE_PUBLISH_TOKEN,
       },
       store: createKvStore(env.STORE),
     });
