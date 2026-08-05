@@ -36,7 +36,7 @@
     "eslint-plugin-react-hooks": "latest",
     "eslint-plugin-react-refresh": "latest",
     "globals": "latest",
-    "tsx": "^4.20.6",
+    "tsx": "^4.23.4",
     "typescript": "latest",
     "typescript-eslint": "latest",
     "vite": "7.3.6",
