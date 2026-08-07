@@ -376,34 +376,50 @@ export function StravaBoard() {
                 <Trophy className="size-5 text-primary" />
                 <h3 className="font-display text-xl font-bold">Leaderboard</h3>
               </div>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Catch up by running a little extra. Missing km is the gap between published targets so
+                far and your uploaded total.
+              </p>
               {leaderboard.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No uploaded runs yet. Be the first to add one.
                 </p>
               ) : (
                 <ol className="space-y-3">
-                  {leaderboard.map((entry, index) => (
-                    <li
-                      key={entry.athleteId}
-                      className="flex items-center gap-3 rounded-2xl bg-muted/65 px-3 py-3"
-                    >
-                      <span className="grid size-8 place-items-center rounded-full bg-ink font-display text-sm font-black text-white">
-                        {index + 1}
-                      </span>
-                      <img
-                        src={entry.athleteAvatar}
-                        alt=""
-                        className="size-10 rounded-full object-cover"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold">{entry.athleteName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {entry.daysMet || 0} day{(entry.daysMet || 0) === 1 ? "" : "s"} met
-                        </p>
-                      </div>
-                      <p className="text-sm font-bold">{entry.totalDistanceKm} km</p>
-                    </li>
-                  ))}
+                  {leaderboard.map((entry, index) => {
+                    const daysMet = entry.daysMet || 0;
+                    const missing = entry.kmMissing ?? 0;
+                    return (
+                      <li
+                        key={entry.athleteId}
+                        className="flex items-center gap-3 rounded-2xl bg-muted/65 px-3 py-3"
+                      >
+                        <span className="grid size-8 place-items-center rounded-full bg-ink font-display text-sm font-black text-white">
+                          {index + 1}
+                        </span>
+                        <img
+                          src={entry.athleteAvatar}
+                          alt=""
+                          className="size-10 rounded-full object-cover"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold">{entry.athleteName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {daysMet} day{daysMet === 1 ? "" : "s"} met
+                            {" · "}
+                            {missing > 0 ? (
+                              <span className="font-semibold text-destructive">
+                                {missing} km to catch up
+                              </span>
+                            ) : (
+                              <span className="font-semibold text-primary">caught up</span>
+                            )}
+                          </p>
+                        </div>
+                        <p className="text-sm font-bold">{entry.totalDistanceKm} km</p>
+                      </li>
+                    );
+                  })}
                 </ol>
               )}
             </Card>

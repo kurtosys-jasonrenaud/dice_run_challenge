@@ -40,6 +40,8 @@ export interface LeaderboardEntry {
   lastRunAt: string | null;
   daysMet?: number;
   daysShort?: number;
+  requiredKm?: number;
+  kmMissing?: number;
 }
 
 const SESSION_KEY = "roll-and-run:strava-session";

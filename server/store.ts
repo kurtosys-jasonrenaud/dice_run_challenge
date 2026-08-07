@@ -71,8 +71,29 @@ export function activityToChallengeDate(iso: string): string {
   return `${year}-${month}-${day}`;
 }
 
+function todayIsoDate(): string {
+  const now = new Date();
+  // Challenge office is UTC+2; keep "today" stable around midnight SA time.
+  const local = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+  const year = local.getUTCFullYear();
+  const month = String(local.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(local.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function requiredKmThroughToday(targets: ChallengeTarget[]): number {
+  const today = todayIsoDate();
+  return Number(
+    targets
+      .filter((target) => target.distanceKm > 0 && target.challengeDate <= today)
+      .reduce((sum, target) => sum + target.distanceKm, 0)
+      .toFixed(2),
+  );
+}
+
 function rankLeaderboard(runs: SharedRun[], targets: ChallengeTarget[]): LeaderboardEntry[] {
   const targetByDate = new Map(targets.map((target) => [target.challengeDate, target]));
+  const requiredKm = requiredKmThroughToday(targets);
   const byAthlete = new Map<number, LeaderboardEntry>();
 
   for (const run of runs) {
@@ -85,6 +106,8 @@ function rankLeaderboard(runs: SharedRun[], targets: ChallengeTarget[]): Leaderb
       lastRunAt: null as string | null,
       daysMet: 0,
       daysShort: 0,
+      requiredKm,
+      kmMissing: requiredKm,
     };
 
     current.runCount += 1;
@@ -102,12 +125,20 @@ function rankLeaderboard(runs: SharedRun[], targets: ChallengeTarget[]): Leaderb
     byAthlete.set(run.athleteId, current);
   }
 
-  return [...byAthlete.values()].sort((a, b) => {
-    const metDiff = (b.daysMet || 0) - (a.daysMet || 0);
-    if (metDiff !== 0) return metDiff;
-    if (b.totalDistanceKm !== a.totalDistanceKm) return b.totalDistanceKm - a.totalDistanceKm;
-    return b.runCount - a.runCount;
-  });
+  return [...byAthlete.values()]
+    .map((entry) => ({
+      ...entry,
+      requiredKm,
+      kmMissing: Math.max(0, Number((requiredKm - entry.totalDistanceKm).toFixed(2))),
+    }))
+    .sort((a, b) => {
+      const metDiff = (b.daysMet || 0) - (a.daysMet || 0);
+      if (metDiff !== 0) return metDiff;
+      const missingDiff = (a.kmMissing || 0) - (b.kmMissing || 0);
+      if (missingDiff !== 0) return missingDiff;
+      if (b.totalDistanceKm !== a.totalDistanceKm) return b.totalDistanceKm - a.totalDistanceKm;
+      return b.runCount - a.runCount;
+    });
 }
 
 function readOAuthRecord(

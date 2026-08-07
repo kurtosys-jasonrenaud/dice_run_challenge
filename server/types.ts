@@ -72,6 +72,10 @@ export interface LeaderboardEntry {
   lastRunAt: string | null;
   daysMet?: number;
   daysShort?: number;
+  /** Sum of published run-day targets through today. */
+  requiredKm?: number;
+  /** How many km still needed to cover missed or short days (0 when caught up). */
+  kmMissing?: number;
 }
 
 export interface StravaActivitySummary {
